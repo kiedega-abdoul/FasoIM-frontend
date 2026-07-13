@@ -3,6 +3,7 @@ import {
   BadgeCheck,
   Building2,
   FileCheck2,
+  UserPlus,
   Users,
 } from "lucide-react"
 import { Link } from "react-router-dom"
@@ -15,18 +16,23 @@ import { Card, CardContent } from "@/components/ui/card"
 const services = [
   {
     icon: Users,
-    title: "Suivi des immergés",
-    description: "Centralisation des informations, affectations et parcours au sein des centres.",
+    title: "Consulter mon immersion",
+    description: "Retrouvez votre affectation, votre centre d’accueil, votre date d’arrivée et les informations disponibles sur votre organisation.",
   },
   {
     icon: Building2,
-    title: "Gestion des centres",
-    description: "Organisation des capacités, sections, groupes, dortoirs et lits.",
+    title: "Préparer mon arrivée",
+    description: "Consultez les consignes, les documents utiles, les articles à apporter et les informations pratiques de votre centre.",
+  },
+  {
+    icon: UserPlus,
+    title: "Faire une demande volontaire",
+    description: "Soumettez votre candidature pour participer volontairement à une session d’immersion patriotique et suivez son traitement.",
   },
   {
     icon: FileCheck2,
-    title: "Documents officiels",
-    description: "Génération, publication et vérification sécurisée des attestations.",
+    title: "Vérifier une attestation",
+    description: "Contrôlez l’authenticité d’une attestation FasoIM, que vous soyez immergé, administration, établissement ou employeur.",
   },
 ]
 
@@ -45,7 +51,7 @@ export function HomePage() {
         <div className="relative z-10 mx-auto flex min-h-[680px] max-w-7xl items-center px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
           <div className="max-w-3xl space-y-8">
             <Badge className="border-white/25 bg-white/15 text-white backdrop-blur-sm hover:bg-white/20">
-              Plateforme nationale d’immersion patriotique
+              Votre espace public FasoIM
             </Badge>
 
             <div className="space-y-5">
@@ -53,20 +59,28 @@ export function HomePage() {
                 Préparez et suivez votre immersion patriotique en toute simplicité
               </h1>
               <p className="max-w-2xl text-pretty text-lg leading-8 text-white/90 drop-shadow sm:text-xl">
-                Consultez votre affectation, les informations de votre centre, les consignes utiles et votre attestation lorsqu’elle est disponible.
+                Consultez votre affectation, préparez votre arrivée, déposez une demande volontaire ou vérifiez une attestation FasoIM.
               </p>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button render={<Link to="/consultation" />} size="lg" className="gap-2 text-base shadow-lg">
-                Consulter mes informations
+                Consulter mon immersion
                 <ArrowRight className="size-4" />
+              </Button>
+              <Button
+                render={<Link to="/demande-volontaire" />}
+                size="lg"
+                variant="secondary"
+                className="border border-white/35 bg-white/92 text-base text-foreground shadow-lg hover:bg-white"
+              >
+                Faire une demande volontaire
               </Button>
               <Button
                 render={<Link to="/verification-attestation" />}
                 size="lg"
-                variant="secondary"
-                className="border border-white/35 bg-white/92 text-base text-foreground shadow-lg hover:bg-white"
+                variant="outline"
+                className="border-white/40 bg-transparent text-base text-white shadow-lg hover:bg-white/10 hover:text-white"
               >
                 Vérifier une attestation
               </Button>
@@ -85,17 +99,17 @@ export function HomePage() {
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-18 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-2xl text-center">
+        <div className="mx-auto max-w-3xl text-center">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Services essentiels</p>
           <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-            Un parcours suivi de bout en bout
+            Les informations utiles pour votre immersion
           </h2>
-          <p className="mt-4 text-base text-muted-foreground">
-            Chaque acteur accède aux fonctionnalités correspondant à son rôle et à son périmètre.
+          <p className="mt-4 text-lg text-muted-foreground">
+            Cet espace vous permet de consulter votre situation, préparer votre arrivée, déposer une demande volontaire et vérifier une attestation FasoIM.
           </p>
         </div>
 
-        <div className="mt-12 grid gap-6 md:grid-cols-3">
+        <div className="mt-12 grid gap-6 md:grid-cols-2">
           {services.map(({ icon: Icon, title, description }) => (
             <Card key={title} className="group border-border/70 transition-all hover:-translate-y-1 hover:border-primary/25 hover:shadow-lg">
               <CardContent className="p-6">
@@ -113,19 +127,37 @@ export function HomePage() {
       <section className="border-y bg-primary text-primary-foreground">
         <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-6 px-4 py-12 sm:px-6 md:flex-row md:items-center lg:px-8">
           <div>
-            <h2 className="text-2xl font-bold">Vous êtes un acteur interne de FasoIM ?</h2>
-            <p className="mt-2 text-base text-primary-foreground/85">
-              Accédez à votre espace sécurisé selon vos permissions et votre affectation active.
+            <h2 className="text-2xl font-bold">Retrouvez les informations qui vous concernent</h2>
+            <p className="mt-2 max-w-3xl text-base text-primary-foreground/85">
+              Consultez votre immersion, déposez une demande volontaire ou vérifiez une attestation officielle sans créer de compte.
             </p>
           </div>
-          <Button
-            render={<Link to="/connexion" />}
-            size="lg"
-            variant="secondary"
-            className="shrink-0 text-base"
-          >
-            Accéder à la plateforme
-          </Button>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button
+              render={<Link to="/consultation" />}
+              size="lg"
+              variant="secondary"
+              className="shrink-0 text-base"
+            >
+              Consulter mon immersion
+            </Button>
+            <Button
+              render={<Link to="/demande-volontaire" />}
+              size="lg"
+              variant="secondary"
+              className="shrink-0 text-base"
+            >
+              Faire une demande volontaire
+            </Button>
+            <Button
+              render={<Link to="/verification-attestation" />}
+              size="lg"
+              variant="outline"
+              className="shrink-0 border-white/40 bg-transparent text-base text-white hover:bg-white/10 hover:text-white"
+            >
+              Vérifier une attestation
+            </Button>
+          </div>
         </div>
       </section>
     </>

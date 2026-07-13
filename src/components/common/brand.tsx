@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom"
+import { Link, useLocation } from "react-router-dom"
 
 import logo from "@/assets/im.png"
 import { cn } from "@/lib/utils"
@@ -9,30 +9,29 @@ type BrandProps = {
 }
 
 export function Brand({ compact = false, className }: BrandProps) {
+  const location = useLocation()
+  const homePath = location.pathname.startsWith("/espace-acteur")
+    ? "/espace-acteur"
+    : "/"
+
   return (
     <Link
-      to="/"
+      to={homePath}
       aria-label="FasoIM, retour à l’accueil"
-      className={cn("group flex items-center gap-3", className)}
+      className={cn("group inline-flex shrink-0 items-center", className)}
     >
-      <span className="relative flex h-14 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-primary/15 bg-white p-1 shadow-sm">
+      <span
+        className={cn(
+          "relative flex shrink-0 items-center justify-center overflow-hidden",
+          compact ? "h-13 w-48" : "h-16 w-60 sm:h-17 sm:w-64",
+        )}
+      >
         <img
           src={logo}
-          alt="Logo FasoIM"
-          className="h-full w-full object-contain object-center transition-transform duration-300 group-hover:scale-105"
+          alt="FasoIM, Immersion patriotique"
+          className="block h-full w-full object-contain object-center transition-transform duration-300 group-hover:scale-[1.02]"
         />
       </span>
-
-      {!compact && (
-        <span className="leading-tight">
-          <span className="block text-xl font-bold tracking-tight text-primary">
-            FasoIM
-          </span>
-          <span className="block text-sm font-medium text-muted-foreground">
-            Immersion patriotique
-          </span>
-        </span>
-      )}
     </Link>
   )
 }

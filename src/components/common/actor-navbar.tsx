@@ -1,4 +1,4 @@
-import { Menu } from "lucide-react"
+import { Menu, ShieldCheck } from "lucide-react"
 import { NavLink } from "react-router-dom"
 
 import { Brand } from "@/components/common/brand"
@@ -14,35 +14,12 @@ import {
 import { cn } from "@/lib/utils"
 
 const navigation = [
-  { label: "Accueil", href: "/" },
-  { label: "Consulter mon immersion", href: "/consultation" },
-  { label: "Demande volontaire", href: "/demande-volontaire" },
-  { label: "Vérifier une attestation", href: "/verification-attestation" },
+  { label: "Accueil", href: "/espace-acteur" },
+  { label: "Consulter une immersion", href: "/espace-acteur/consultation" },
+  { label: "Vérifier une attestation", href: "/espace-acteur/verification-attestation" },
 ]
 
-function DesktopNavigation() {
-  return (
-    <nav aria-label="Navigation principale" className="hidden items-center gap-1 lg:flex">
-      {navigation.map((item) => (
-        <NavLink
-          key={item.href}
-          to={item.href}
-          end={item.href === "/"}
-          className={({ isActive }) =>
-            cn(
-              "rounded-lg px-3 py-2.5 text-base font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-              isActive && "bg-primary/10 text-primary",
-            )
-          }
-        >
-          {item.label}
-        </NavLink>
-      ))}
-    </nav>
-  )
-}
-
-export function PublicNavbar() {
+export function ActorNavbar() {
   return (
     <header className="sticky top-0 z-50 border-b-4 border-primary bg-background/95 shadow-sm backdrop-blur-xl">
       <div className="h-1.5 bg-red-600" aria-hidden="true" />
@@ -50,7 +27,33 @@ export function PublicNavbar() {
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <Brand />
 
-        <DesktopNavigation />
+        <nav className="hidden items-center gap-1 lg:flex" aria-label="Navigation des acteurs internes">
+          {navigation.map((item) => (
+            <NavLink
+              key={item.href}
+              to={item.href}
+              end={item.href === "/espace-acteur"}
+              className={({ isActive }) =>
+                cn(
+                  "rounded-lg px-4 py-2.5 text-base font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+                  isActive && "bg-primary/10 text-primary",
+                )
+              }
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="hidden lg:block">
+          <Button
+            render={<NavLink to="/espace-acteur/connexion" />}
+            className="gap-2 px-5 text-base"
+          >
+            <ShieldCheck className="size-4" />
+            Accéder à la plateforme
+          </Button>
+        </div>
 
         <Sheet>
           <SheetTrigger render={<Button variant="outline" size="icon" className="lg:hidden" />}>
@@ -67,14 +70,14 @@ export function PublicNavbar() {
               </SheetTitle>
             </SheetHeader>
 
-            <nav className="flex flex-col gap-2 p-5" aria-label="Navigation mobile">
+            <nav className="flex flex-col gap-2 p-5" aria-label="Navigation mobile des acteurs internes">
               {navigation.map((item) => (
                 <SheetClose
                   key={item.href}
                   render={
                     <NavLink
                       to={item.href}
-                      end={item.href === "/"}
+                      end={item.href === "/espace-acteur"}
                       className={({ isActive }) =>
                         cn(
                           "rounded-xl px-4 py-3 text-base font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
@@ -87,6 +90,18 @@ export function PublicNavbar() {
                   {item.label}
                 </SheetClose>
               ))}
+
+              <SheetClose
+                render={
+                  <Button
+                    render={<NavLink to="/espace-acteur/connexion" />}
+                    className="mt-3 w-full gap-2 text-base"
+                  />
+                }
+              >
+                <ShieldCheck className="size-4" />
+                Accéder à la plateforme
+              </SheetClose>
             </nav>
           </SheetContent>
         </Sheet>
