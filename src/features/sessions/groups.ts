@@ -1,0 +1,8 @@
+import { SESSION_PERMISSIONS as P } from "./permissions"
+
+export const SESSION_GROUPS = {
+  MANAGEMENT: [
+    P.LIST, P.VIEW, P.CREATE, P.UPDATE, P.CONFIGURE, P.UPDATE_SETTINGS,
+    P.CLOSE, P.ARCHIVE, P.VIEW_HISTORY, P.VIEW_SETTINGS_HISTORY,
+  ],
+} as const

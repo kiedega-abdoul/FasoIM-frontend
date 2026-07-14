@@ -16,6 +16,12 @@ import { ProtectedRoute } from "@/routes/protected-route"
 import { PermissionRoute } from "@/routes/permission-route"
 import { ACCOUNT_PERMISSIONS as AP } from "@/features/accounts/permissions"
 import { ACCOUNT_GROUPS } from "@/features/accounts/groups"
+import { SESSION_GROUPS } from "@/features/sessions/groups"
+import { SESSION_PERMISSIONS as SP } from "@/features/sessions/permissions"
+import { SessionsListPage } from "@/features/sessions/pages/sessions-list-page"
+import { SessionFormPage } from "@/features/sessions/pages/session-form-page"
+import { SessionParametersPage } from "@/features/sessions/pages/session-parameters-page"
+import { SessionDetailPage } from "@/features/sessions/pages/session-detail-page"
 import { ProfilePage, EditProfilePage, ChangePasswordPage } from "@/features/accounts/pages/profile-pages"
 import { ActorsListPage, ActorFormPage, ActorDetailPage } from "@/features/accounts/pages/actors-pages"
 import { AssignmentsListPage, AssignmentCreatePage, AssignmentDetailPage, RolesListPage, RoleFormPage, RoleDetailPage, RolePermissionsPage, PermissionsListPage, PermissionDetailPage } from "@/features/accounts/pages/access-pages"
@@ -49,6 +55,13 @@ export function AppRouter() {
           <Route path="profil" element={<ProfilePage />} />
           <Route path="profil/modifier" element={<EditProfilePage />} />
           <Route path="profil/mot-de-passe" element={<ChangePasswordPage />} />
+
+          <Route element={<PermissionRoute permissions={[...SESSION_GROUPS.MANAGEMENT]} />}><Route path="sessions" element={<SessionsListPage />} /></Route>
+          <Route element={<PermissionRoute permission={SP.CREATE} />}><Route path="sessions/nouvelle" element={<SessionFormPage />} /></Route>
+          <Route element={<PermissionRoute permission={SP.VIEW} />}><Route path="sessions/:sessionId" element={<SessionDetailPage />} /></Route>
+          <Route element={<PermissionRoute permission={SP.UPDATE} />}><Route path="sessions/:sessionId/modifier" element={<SessionFormPage edit />} /></Route>
+          <Route element={<PermissionRoute permission={SP.CONFIGURE} />}><Route path="sessions/:sessionId/parametres/configurer" element={<SessionParametersPage configure />} /></Route>
+          <Route element={<PermissionRoute permission={SP.UPDATE_SETTINGS} />}><Route path="sessions/:sessionId/parametres/modifier" element={<SessionParametersPage />} /></Route>
 
           <Route element={<PermissionRoute permissions={[...ACCOUNT_GROUPS.ACTORS]} />}><Route path="acteurs" element={<ActorsListPage />} /></Route>
           <Route element={<PermissionRoute permission={AP.CREATE_ACTOR} />}><Route path="acteurs/nouveau" element={<ActorFormPage />} /></Route>

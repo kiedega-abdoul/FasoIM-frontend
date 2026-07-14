@@ -1,5 +1,6 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios"
 
+import { assignmentContextService } from "@/services/assignment-context-service"
 import { tokenService } from "@/services/token-service"
 import type { AuthTokens } from "@/types/auth"
 
@@ -21,6 +22,11 @@ httpClient.interceptors.request.use((config) => {
 
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`
+  }
+
+  const assignmentId = assignmentContextService.getCurrentAssignmentId()
+  if (assignmentId) {
+    config.headers["X-FasoIM-Affectation"] = String(assignmentId)
   }
 
   return config

@@ -9,6 +9,8 @@ export const ACCOUNT_PERMISSIONS = {
   ENABLE_ACTOR: "reactiver_acteur",
   VIEW_ACTOR: "consulter_acteur",
   LIST_ACTORS: "lister_acteurs",
+  LIST_ACTOR_ASSIGNMENTS: "lister_affectations_acteurs",
+  VIEW_ACTOR_ASSIGNMENT: "consulter_affectation_acteur",
   ASSIGN_ACTOR: "affecter_acteur_session",
   REMOVE_ACTOR_ASSIGNMENT: "retirer_affectation_acteur",
   SUSPEND_ACTOR_ASSIGNMENT: "suspendre_affectation_acteur",

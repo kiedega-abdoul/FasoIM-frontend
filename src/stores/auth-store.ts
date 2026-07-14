@@ -1,6 +1,7 @@
 import { create } from "zustand"
 
 import { authApi } from "@/features/auth/api/auth-api"
+import { assignmentContextService } from "@/services/assignment-context-service"
 import { tokenService } from "@/services/token-service"
 import type { ContexteActeur, ListeAffectations } from "@/types/auth"
 
@@ -31,6 +32,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const tokens = await authApi.login(username, password)
       tokenService.saveTokens(tokens)
       const context = await authApi.getCurrentContext()
+      assignmentContextService.saveCurrentAssignmentId(context.affectation_courante?.id ?? null)
       set({ status: "authenticated", context, assignments: null })
     } catch (error) {
       tokenService.clearTokens()
@@ -53,6 +55,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       const context = await authApi.getCurrentContext()
+      assignmentContextService.saveCurrentAssignmentId(context.affectation_courante?.id ?? null)
       set({ status: "authenticated", context })
     } catch {
       tokenService.clearTokens()
@@ -73,11 +76,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   async selectAssignment(assignmentId) {
     const context = await authApi.getAssignmentContext(assignmentId)
+    assignmentContextService.saveCurrentAssignmentId(assignmentId)
     set({ context })
   },
 
   logout() {
     tokenService.clearTokens()
+    assignmentContextService.clear()
     set({ status: "anonymous", context: null, assignments: null })
   },
 }))
