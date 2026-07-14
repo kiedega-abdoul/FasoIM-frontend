@@ -1,14 +1,26 @@
 import { Navigate, Route, Routes } from "react-router-dom"
 
 import { ActorLayout } from "@/layouts/actor-layout"
+import { AppLayout } from "@/layouts/app-layout"
 import { PublicLayout } from "@/layouts/public-layout"
 import { ActorHomePage } from "@/pages/actor-home-page"
+import { AssignmentsPage } from "@/pages/assignments-page"
 import { ConsultationPage } from "@/pages/consultation-page"
+import { DashboardPage } from "@/pages/dashboard-page"
 import { VolunteerApplicationPage } from "@/pages/volunteer-application-page"
 import { HomePage } from "@/pages/home-page"
 import { LoginPage } from "@/pages/login-page"
 import { NotFoundPage } from "@/pages/not-found-page"
 import { VerificationAttestationPage } from "@/pages/verification-attestation-page"
+import { ProtectedRoute } from "@/routes/protected-route"
+import { PermissionRoute } from "@/routes/permission-route"
+import { ACCOUNT_PERMISSIONS as AP } from "@/features/accounts/permissions"
+import { ACCOUNT_GROUPS } from "@/features/accounts/groups"
+import { ProfilePage, EditProfilePage, ChangePasswordPage } from "@/features/accounts/pages/profile-pages"
+import { ActorsListPage, ActorFormPage, ActorDetailPage } from "@/features/accounts/pages/actors-pages"
+import { AssignmentsListPage, AssignmentCreatePage, AssignmentDetailPage, RolesListPage, RoleFormPage, RoleDetailPage, RolePermissionsPage, PermissionsListPage, PermissionDetailPage } from "@/features/accounts/pages/access-pages"
+import { PermissionRequestsListPage, PermissionRequestCreatePage, PermissionRequestDetailPage } from "@/features/accounts/pages/requests-pages"
+
 
 export function AppRouter() {
   return (
@@ -26,6 +38,38 @@ export function AppRouter() {
         <Route path="consultation" element={<ConsultationPage />} />
         <Route path="verification-attestation" element={<VerificationAttestationPage />} />
         <Route path="connexion" element={<LoginPage />} />
+      </Route>
+
+      <Route element={<ProtectedRoute />}>
+        <Route path="app" element={<AppLayout />}>
+          <Route index element={<DashboardPage />} />
+          <Route path="mes-affectations" element={<AssignmentsPage />} />
+          <Route path="consultation" element={<ConsultationPage />} />
+          <Route path="verification-attestation" element={<VerificationAttestationPage />} />
+          <Route path="profil" element={<ProfilePage />} />
+          <Route path="profil/modifier" element={<EditProfilePage />} />
+          <Route path="profil/mot-de-passe" element={<ChangePasswordPage />} />
+
+          <Route element={<PermissionRoute permissions={[...ACCOUNT_GROUPS.ACTORS]} />}><Route path="acteurs" element={<ActorsListPage />} /></Route>
+          <Route element={<PermissionRoute permission={AP.CREATE_ACTOR} />}><Route path="acteurs/nouveau" element={<ActorFormPage />} /></Route>
+          <Route element={<PermissionRoute permission={AP.VIEW_ACTOR} />}><Route path="acteurs/:acteurId" element={<ActorDetailPage />} /></Route>
+          <Route element={<PermissionRoute permission={AP.UPDATE_ACTOR} />}><Route path="acteurs/:acteurId/modifier" element={<ActorFormPage edit />} /></Route>
+
+          <Route element={<PermissionRoute permissions={[...ACCOUNT_GROUPS.ASSIGNMENTS]} />}><Route path="affectations" element={<AssignmentsListPage />} /></Route>
+          <Route element={<PermissionRoute permission={AP.ASSIGN_ACTOR} />}><Route path="affectations/nouvelle" element={<AssignmentCreatePage />} /></Route>
+          <Route element={<PermissionRoute permissions={[...ACCOUNT_GROUPS.ASSIGNMENTS]} />}><Route path="affectations/:id" element={<AssignmentDetailPage />} /></Route>
+
+          <Route element={<PermissionRoute permissions={[...ACCOUNT_GROUPS.ROLES]} />}><Route path="roles" element={<RolesListPage />} /></Route>
+          <Route element={<PermissionRoute permission={AP.CREATE_ROLE} />}><Route path="roles/nouveau" element={<RoleFormPage />} /></Route>
+          <Route element={<PermissionRoute permission={AP.VIEW_ROLE} />}><Route path="roles/:roleId" element={<RoleDetailPage />} /><Route path="roles/:roleId/permissions" element={<RolePermissionsPage />} /></Route>
+          <Route element={<PermissionRoute permission={AP.UPDATE_ROLE} />}><Route path="roles/:roleId/modifier" element={<RoleFormPage edit />} /></Route>
+
+          <Route element={<PermissionRoute permissions={[...ACCOUNT_GROUPS.PERMISSIONS]} />}><Route path="permissions" element={<PermissionsListPage />} /></Route>
+          <Route element={<PermissionRoute permission={AP.VIEW_PERMISSION} />}><Route path="permissions/:permissionId" element={<PermissionDetailPage />} /></Route>
+          <Route element={<PermissionRoute permissions={[...ACCOUNT_GROUPS.REQUESTS]} />}><Route path="permissions/demandes" element={<PermissionRequestsListPage />} /></Route>
+          <Route element={<PermissionRoute permission={AP.REQUEST_PERMISSION} />}><Route path="permissions/demandes/nouvelle" element={<PermissionRequestCreatePage />} /></Route>
+          <Route element={<PermissionRoute permission={AP.VIEW_PERMISSION_REQUEST} />}><Route path="permissions/demandes/:id" element={<PermissionRequestDetailPage />} /></Route>
+        </Route>
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

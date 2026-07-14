@@ -10,9 +10,11 @@ type BrandProps = {
 
 export function Brand({ compact = false, className }: BrandProps) {
   const location = useLocation()
-  const homePath = location.pathname.startsWith("/espace-acteur")
-    ? "/espace-acteur"
-    : "/"
+  const homePath = location.pathname.startsWith("/app")
+    ? "/app"
+    : location.pathname.startsWith("/espace-acteur")
+      ? "/espace-acteur"
+      : "/"
 
   return (
     <Link
