@@ -1,0 +1,18 @@
+import { useEffect,useMemo,useState } from "react"
+import { useNavigate,useParams } from "react-router-dom"
+import { toast } from "sonner"
+import { Card,CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { ErrorBox,Loading,PageHeader } from "@/features/accounts/components"
+import { getApiErrorMessage } from "@/api/api-error"
+import { importsApi } from "../api"
+import type { ExpectedField,OfficialImport } from "../types"
+
+export function ImportMappingPage(){const{id}=useParams();const importId=Number(id);const nav=useNavigate();const[item,setItem]=useState<OfficialImport|null>(null);const[fields,setFields]=useState<ExpectedField[]>([]);const[map,setMap]=useState<Record<string,string>>({});const[header,setHeader]=useState("1");const[first,setFirst]=useState("2");const[error,setError]=useState("");const[busy,setBusy]=useState(false)
+useEffect(()=>{Promise.all([importsApi.detail(importId),importsApi.mappings(importId)]).then(async([detail,mappings])=>{setItem(detail);setFields(detail.champs_attendus??(await importsApi.expectedFields(detail.type_source)).champs);const initial:Record<string,string>={};for(const m of mappings)initial[m.champ_cible]=m.colonne_source;setMap(initial);setHeader(String(detail.parametres_lecture?.ligne_entete??1));setFirst(String(detail.parametres_lecture?.premiere_ligne_donnees??2))}).catch(e=>setError(getApiErrorMessage(e)))},[importId])
+const missing=useMemo(()=>fields.filter(f=>f.obligatoire&&!map[f.code]),[fields,map])
+async function submit(){if(missing.length){toast.error("Associez tous les champs obligatoires.");return}setBusy(true);try{await importsApi.validateMapping(importId,{correspondances:fields.filter(f=>map[f.code]).map(f=>({champ_cible:f.code,colonne_source:map[f.code]})),parametres_lecture:{ligne_entete:Number(header),premiere_ligne_donnees:Number(first)}});toast.success("Correspondance validée. La lecture des lignes est lancée.");nav(`/app/imports/${importId}`)}catch(e){toast.error(getApiErrorMessage(e))}finally{setBusy(false)}}
+if(error)return <ErrorBox message={error}/>;if(!item)return <Loading/>
+return <><PageHeader title="Correspondance des colonnes" description="Associez chaque champ FasoIM à la colonne correspondante du fichier." backTo={`/app/imports/${importId}`}/><Card><CardContent className="space-y-6 p-6"><div className="grid gap-4 md:grid-cols-2"><div><Label>Ligne contenant les titres</Label><Input className="mt-2" type="number" min={1} value={header} onChange={e=>setHeader(e.target.value)}/></div><div><Label>Première ligne de données</Label><Input className="mt-2" type="number" min={2} value={first} onChange={e=>setFirst(e.target.value)}/></div></div><div className="space-y-4">{fields.map(f=><div key={f.code} className="grid items-center gap-3 rounded-xl border p-4 md:grid-cols-[1fr_1.2fr]"><div><p className="font-semibold">{f.libelle}{f.obligatoire&&<span className="text-destructive"> *</span>}</p><p className="text-sm text-muted-foreground">Champ FasoIM : {f.code}</p></div><select className="h-11 rounded-xl border bg-background px-3" value={map[f.code]??""} onChange={e=>setMap(v=>({...v,[f.code]:e.target.value}))}><option value="">Ne pas associer</option>{item.colonnes_detectees?.map(c=><option key={c} value={c}>{c}</option>)}</select></div>)}</div>{missing.length>0&&<p className="text-sm text-destructive">Champs obligatoires non associés : {missing.map(f=>f.libelle).join(", ")}</p>}<div className="flex justify-end"><Button disabled={busy} onClick={()=>void submit()}>{busy?"Validation…":"Valider la correspondance"}</Button></div></CardContent></Card></>}

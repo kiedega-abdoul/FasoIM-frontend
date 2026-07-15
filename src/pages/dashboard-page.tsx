@@ -1,10 +1,11 @@
-import { ArrowRight, CalendarCog, CalendarRange, Clock3, KeyRound, MapPin, MapPinned, Shield, ShieldCheck, Users } from "lucide-react"
+import { ArrowRight, CalendarCog, CalendarRange, Clock3, FileSpreadsheet, KeyRound, MapPin, MapPinned, Shield, ShieldCheck, Users } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { ACCOUNT_GROUPS } from "@/features/accounts/groups"
 import { SESSION_GROUPS } from "@/features/sessions/groups"
+import { IMPORT_GROUPS } from "@/features/imports/groups"
 import { useAuthStore } from "@/stores/auth-store"
 
 const roleMessages: Record<string, { title: string; description: string }> = {
@@ -20,6 +21,7 @@ type ModuleAccess = { label: string; description: string; href: string; permissi
 
 const accountsModules: ModuleAccess[] = [
   { label: "Gestion des sessions", description: "Créer, préparer, démarrer, terminer et archiver les sessions d’immersion.", href: "/app/sessions", permissions: SESSION_GROUPS.MANAGEMENT, icon: CalendarCog },
+  { label: "Imports officiels", description: "Téléverser, contrôler, corriger et confirmer les listes officielles.", href: "/app/imports", permissions: IMPORT_GROUPS.MANAGEMENT, icon: FileSpreadsheet },
   { label: "Gestion des acteurs", description: "Lister, créer, consulter, modifier, désactiver ou réactiver les acteurs.", href: "/app/acteurs", permissions: ACCOUNT_GROUPS.ACTORS, icon: Users },
   { label: "Gestion des affectations", description: "Gérer les affectations, leurs rôles et leurs permissions directes.", href: "/app/affectations", permissions: ACCOUNT_GROUPS.ASSIGNMENTS, icon: MapPin },
   { label: "Gestion des rôles", description: "Créer et gérer les rôles ainsi que les permissions qui leur sont associées.", href: "/app/roles", permissions: ACCOUNT_GROUPS.ROLES, icon: Shield },

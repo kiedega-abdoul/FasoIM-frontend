@@ -22,6 +22,14 @@ import { SessionsListPage } from "@/features/sessions/pages/sessions-list-page"
 import { SessionFormPage } from "@/features/sessions/pages/session-form-page"
 import { SessionParametersPage } from "@/features/sessions/pages/session-parameters-page"
 import { SessionDetailPage } from "@/features/sessions/pages/session-detail-page"
+import { IMPORT_GROUPS } from "@/features/imports/groups"
+import { IMPORT_PERMISSIONS as IP } from "@/features/imports/permissions"
+import { ImportsListPage } from "@/features/imports/pages/imports-list-page"
+import { ImportCreatePage } from "@/features/imports/pages/import-create-page"
+import { ImportDetailPage } from "@/features/imports/pages/import-detail-page"
+import { ImportMappingPage } from "@/features/imports/pages/import-mapping-page"
+import { ImportRowsPage } from "@/features/imports/pages/import-rows-page"
+import { ImportErrorsPage } from "@/features/imports/pages/import-errors-page"
 import { ProfilePage, EditProfilePage, ChangePasswordPage } from "@/features/accounts/pages/profile-pages"
 import { ActorsListPage, ActorFormPage, ActorDetailPage } from "@/features/accounts/pages/actors-pages"
 import { AssignmentsListPage, AssignmentCreatePage, AssignmentDetailPage, RolesListPage, RoleFormPage, RoleDetailPage, RolePermissionsPage, PermissionsListPage, PermissionDetailPage } from "@/features/accounts/pages/access-pages"
@@ -62,6 +70,13 @@ export function AppRouter() {
           <Route element={<PermissionRoute permission={SP.UPDATE} />}><Route path="sessions/:sessionId/modifier" element={<SessionFormPage edit />} /></Route>
           <Route element={<PermissionRoute permission={SP.CONFIGURE} />}><Route path="sessions/:sessionId/parametres/configurer" element={<SessionParametersPage configure />} /></Route>
           <Route element={<PermissionRoute permission={SP.UPDATE_SETTINGS} />}><Route path="sessions/:sessionId/parametres/modifier" element={<SessionParametersPage />} /></Route>
+
+          <Route element={<PermissionRoute permissions={[...IMPORT_GROUPS.MANAGEMENT]} />}><Route path="imports" element={<ImportsListPage />} /></Route>
+          <Route element={<PermissionRoute permission={IP.CREATE} />}><Route path="imports/nouveau" element={<ImportCreatePage />} /></Route>
+          <Route element={<PermissionRoute permission={IP.VIEW} />}><Route path="imports/:id" element={<ImportDetailPage />} /></Route>
+          <Route element={<PermissionRoute permission={IP.VALIDATE_MAPPING} />}><Route path="imports/:id/correspondance" element={<ImportMappingPage />} /></Route>
+          <Route element={<PermissionRoute permission={IP.VIEW_ROWS} />}><Route path="imports/:id/lignes" element={<ImportRowsPage />} /></Route>
+          <Route element={<PermissionRoute permission={IP.VIEW_ERRORS} />}><Route path="imports/:id/erreurs" element={<ImportErrorsPage />} /></Route>
 
           <Route element={<PermissionRoute permissions={[...ACCOUNT_GROUPS.ACTORS]} />}><Route path="acteurs" element={<ActorsListPage />} /></Route>
           <Route element={<PermissionRoute permission={AP.CREATE_ACTOR} />}><Route path="acteurs/nouveau" element={<ActorFormPage />} /></Route>

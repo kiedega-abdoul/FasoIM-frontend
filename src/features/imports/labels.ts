@@ -1,0 +1,5 @@
+import type { ImportSource, ImportStatus } from "./types"
+export const SOURCE_LABELS: Record<ImportSource, string> = { BEPC:"BEPC", BAC:"BAC", CONCOURS:"Concours", SELECTIONNES:"Personnes sélectionnées", VOLONTAIRES_ACCEPTES:"Volontaires acceptés" }
+export const STATUS_LABELS: Record<ImportStatus, string> = { RECU:"Reçu", LECTURE_COLONNES_EN_COURS:"Lecture des colonnes", CORRESPONDANCE_REQUISE:"Correspondance requise", CORRESPONDANCE_VALIDEE:"Correspondance validée", VALIDATION_EN_COURS:"Validation des lignes", VALIDE:"Valide", VALIDE_AVEC_ERREURS:"Valide avec erreurs", CONFIRMATION_EN_COURS:"Confirmation en cours", TERMINE:"Terminé", ECHEC:"Échec", ANNULE:"Annulé" }
+export function formatDate(value?: string | null){ return value ? new Intl.DateTimeFormat("fr-FR",{dateStyle:"medium",timeStyle:"short"}).format(new Date(value)) : "—" }
+export function formatBytes(value:number){ if(value<1024)return `${value} o`; if(value<1024**2)return `${(value/1024).toFixed(1)} Ko`; return `${(value/1024**2).toFixed(1)} Mo` }
