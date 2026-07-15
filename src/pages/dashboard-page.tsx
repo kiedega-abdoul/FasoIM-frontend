@@ -1,11 +1,10 @@
-import { ArrowRight, CalendarCog, CalendarRange, Clock3, FileSpreadsheet, KeyRound, MapPin, MapPinned, Shield, ShieldCheck, Users } from "lucide-react"
+import { ArrowRight, CalendarRange, Clock3, KeyRound, MapPin, MapPinned, Shield, ShieldCheck, Users } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { ACCOUNT_GROUPS } from "@/features/accounts/groups"
-import { SESSION_GROUPS } from "@/features/sessions/groups"
-import { IMPORT_GROUPS } from "@/features/imports/groups"
+import { VOLUNTEER_REQUEST_PERMISSIONS } from "@/features/volunteers/requests-permissions"
 import { useAuthStore } from "@/stores/auth-store"
 
 const roleMessages: Record<string, { title: string; description: string }> = {
@@ -20,12 +19,23 @@ const roleMessages: Record<string, { title: string; description: string }> = {
 type ModuleAccess = { label: string; description: string; href: string; permissions: readonly string[]; icon: typeof Users }
 
 const accountsModules: ModuleAccess[] = [
-  { label: "Gestion des sessions", description: "Créer, préparer, démarrer, terminer et archiver les sessions d’immersion.", href: "/app/sessions", permissions: SESSION_GROUPS.MANAGEMENT, icon: CalendarCog },
-  { label: "Imports officiels", description: "Téléverser, contrôler, corriger et confirmer les listes officielles.", href: "/app/imports", permissions: IMPORT_GROUPS.MANAGEMENT, icon: FileSpreadsheet },
   { label: "Gestion des acteurs", description: "Lister, créer, consulter, modifier, désactiver ou réactiver les acteurs.", href: "/app/acteurs", permissions: ACCOUNT_GROUPS.ACTORS, icon: Users },
   { label: "Gestion des affectations", description: "Gérer les affectations, leurs rôles et leurs permissions directes.", href: "/app/affectations", permissions: ACCOUNT_GROUPS.ASSIGNMENTS, icon: MapPin },
   { label: "Gestion des rôles", description: "Créer et gérer les rôles ainsi que les permissions qui leur sont associées.", href: "/app/roles", permissions: ACCOUNT_GROUPS.ROLES, icon: Shield },
   { label: "Gestion des permissions", description: "Consulter le catalogue et accéder aux demandes de permissions.", href: "/app/permissions", permissions: ACCOUNT_GROUPS.PERMISSIONS, icon: KeyRound },
+  {
+    label: "Demandes volontaires",
+    description: "Consulter et traiter les demandes de participation volontaire.",
+    href: "/app/demandes-volontaires",
+    permissions: [
+      VOLUNTEER_REQUEST_PERMISSIONS.LIST,
+      VOLUNTEER_REQUEST_PERMISSIONS.VIEW,
+      VOLUNTEER_REQUEST_PERMISSIONS.ACCEPT,
+      VOLUNTEER_REQUEST_PERMISSIONS.REJECT,
+      VOLUNTEER_REQUEST_PERMISSIONS.ACCEPT_BATCH,
+    ],
+    icon: Users,
+  },
 ]
 
 export function DashboardPage() {
@@ -104,11 +114,11 @@ export function DashboardPage() {
       <section>
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Accès immédiat</p>
         <h2 className="mt-1 text-2xl font-bold">Actions rapides</h2>
-        {quickAccess.length ? <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{quickAccess.map(({ label, description, href, icon: Icon }) => <Link key={href} to={href} className="group rounded-2xl border bg-card p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"><div className="flex items-start justify-between gap-4"><span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon className="size-5" /></span><ArrowRight className="size-5 text-muted-foreground transition group-hover:translate-x-1 group-hover:text-primary" /></div><h3 className="mt-3 text-base font-semibold">{label}</h3><p className="mt-1 text-sm leading-5 text-muted-foreground">{description}</p></Link>)}</div> : <Card className="mt-4"><CardContent className="p-5"><h3 className="font-semibold">Aucun module métier disponible</h3><p className="mt-2 text-sm text-muted-foreground">Cette affectation ne possède actuellement aucune permission correspondant aux modules actuellement disponibles dans le frontend.</p></CardContent></Card>}
+        {quickAccess.length ? <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{quickAccess.map(({ label, description, href, icon: Icon }) => <Link key={href} to={href} className="group rounded-2xl border bg-card p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"><div className="flex items-start justify-between gap-4"><span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon className="size-5" /></span><ArrowRight className="size-5 text-muted-foreground transition group-hover:translate-x-1 group-hover:text-primary" /></div><h3 className="mt-3 text-base font-semibold">{label}</h3><p className="mt-1 text-sm leading-5 text-muted-foreground">{description}</p></Link>)}</div> : <Card className="mt-4"><CardContent className="p-5"><h3 className="font-semibold">Aucun module Accounts disponible</h3><p className="mt-2 text-sm text-muted-foreground">Cette affectation ne possède actuellement aucune permission du module Accounts gérée par cette version du frontend.</p></CardContent></Card>}
       </section>
 
       <section>
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Pilotage et autorisations</p>
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Comptes et autorisations</p>
         <h2 className="mt-1 text-2xl font-bold">Opérations disponibles</h2>
         <p className="mt-2 text-sm text-muted-foreground">Les opérations précises se trouvent à l’intérieur des interfaces ci-dessus. Les boutons y apparaissent selon vos permissions.</p>
       </section>

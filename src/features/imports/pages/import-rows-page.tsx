@@ -91,7 +91,7 @@ function DetailSection({ title, fields, data }: { title: string; fields: string[
         {fields.map((field) => (
           <div key={field}>
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{labelFor(field)}</p>
-            <p className="mt-1 break-words font-medium">{displayValue(data[field])}</p>
+            <p className="mt-1 wrap-break-word font-medium">{displayValue(data[field])}</p>
           </div>
         ))}
       </div>

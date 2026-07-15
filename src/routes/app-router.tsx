@@ -8,6 +8,8 @@ import { AssignmentsPage } from "@/pages/assignments-page"
 import { ConsultationPage } from "@/pages/consultation-page"
 import { DashboardPage } from "@/pages/dashboard-page"
 import { VolunteerApplicationPage } from "@/pages/volunteer-application-page"
+import { VolunteerChoicePage } from "@/pages/volunteer-choice-page"
+import { VolunteerFollowUpPage } from "@/pages/volunteer-follow-up-page"
 import { HomePage } from "@/pages/home-page"
 import { LoginPage } from "@/pages/login-page"
 import { NotFoundPage } from "@/pages/not-found-page"
@@ -34,6 +36,8 @@ import { ProfilePage, EditProfilePage, ChangePasswordPage } from "@/features/acc
 import { ActorsListPage, ActorFormPage, ActorDetailPage } from "@/features/accounts/pages/actors-pages"
 import { AssignmentsListPage, AssignmentCreatePage, AssignmentDetailPage, RolesListPage, RoleFormPage, RoleDetailPage, RolePermissionsPage, PermissionsListPage, PermissionDetailPage } from "@/features/accounts/pages/access-pages"
 import { PermissionRequestsListPage, PermissionRequestCreatePage, PermissionRequestDetailPage } from "@/features/accounts/pages/requests-pages"
+import { VolunteerRequestDetailPage, VolunteerRequestsListPage } from "@/features/volunteers/requests-pages"
+import { VOLUNTEER_REQUEST_ACCESS, VOLUNTEER_REQUEST_PERMISSIONS as VRP } from "@/features/volunteers/requests-permissions"
 
 
 export function AppRouter() {
@@ -42,7 +46,9 @@ export function AppRouter() {
       <Route element={<PublicLayout />}>
         <Route index element={<HomePage />} />
         <Route path="consultation" element={<ConsultationPage />} />
-        <Route path="demande-volontaire" element={<VolunteerApplicationPage />} />
+        <Route path="demande-volontaire" element={<VolunteerChoicePage />} />
+        <Route path="demande-volontaire/nouvelle" element={<VolunteerApplicationPage />} />
+        <Route path="demande-volontaire/suivi" element={<VolunteerFollowUpPage />} />
         <Route path="verification-attestation" element={<VerificationAttestationPage />} />
         <Route path="connexion" element={<Navigate to="/espace-acteur/connexion" replace />} />
       </Route>
@@ -63,6 +69,9 @@ export function AppRouter() {
           <Route path="profil" element={<ProfilePage />} />
           <Route path="profil/modifier" element={<EditProfilePage />} />
           <Route path="profil/mot-de-passe" element={<ChangePasswordPage />} />
+
+          <Route element={<PermissionRoute permissions={[...VOLUNTEER_REQUEST_ACCESS]} />}><Route path="demandes-volontaires" element={<VolunteerRequestsListPage />} /></Route>
+          <Route element={<PermissionRoute permission={VRP.VIEW} />}><Route path="demandes-volontaires/:id" element={<VolunteerRequestDetailPage />} /></Route>
 
           <Route element={<PermissionRoute permissions={[...SESSION_GROUPS.MANAGEMENT]} />}><Route path="sessions" element={<SessionsListPage />} /></Route>
           <Route element={<PermissionRoute permission={SP.CREATE} />}><Route path="sessions/nouvelle" element={<SessionFormPage />} /></Route>

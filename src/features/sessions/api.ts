@@ -35,7 +35,7 @@ export const sessionsApi = {
     return list(response.data)
   },
   async publicOpenSessions() {
-    const response = await httpClient.get<ListResponse<PublicSession>>("/public/sessions/ouvertes-inscription/")
+    const response = await httpClient.get<ListResponse<PublicSession>>("/sessions/public/ouvertes-inscription/")
     return list(response.data)
   },
 }
