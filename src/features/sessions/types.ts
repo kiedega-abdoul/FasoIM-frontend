@@ -3,6 +3,12 @@ export type SessionType = "examen" | "concours" | "selectionne" | "volontaire" |
 export type PublicCible = "BEPC" | "BAC" | "CONCOURS" | "SELECTIONNE" | "VOLONTAIRE" | "MIXTE"
 export type ModeEntree = "import" | "inscription" | "mixte"
 
+export type SessionCenterSelection = {
+  centre_id: number
+  centre_code: string
+  centre_nom: string
+}
+
 export type SessionParameters = {
   id: number
   session: number
@@ -20,6 +26,7 @@ export type SessionParameters = {
   directives_generales: string
   consignes_generales: string
   documents_exiges: string[]
+  centres_accueil: SessionCenterSelection[]
   utilise_import?: boolean
   utilise_inscription_volontaire?: boolean
 }

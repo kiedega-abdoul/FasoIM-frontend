@@ -50,8 +50,8 @@ export function ActorNavbar() {
             render={<NavLink to="/espace-acteur/connexion" />}
             className="gap-2 px-5 text-base"
           >
-            <ShieldCheck className="size-4" />
-            Accéder à la plateforme
+            <ShieldCheck className="size-5" />
+            Accéder à mon espace de travail
           </Button>
         </div>
 

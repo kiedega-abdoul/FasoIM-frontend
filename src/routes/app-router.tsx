@@ -13,6 +13,7 @@ import { VolunteerFollowUpPage } from "@/pages/volunteer-follow-up-page"
 import { HomePage } from "@/pages/home-page"
 import { LoginPage } from "@/pages/login-page"
 import { NotFoundPage } from "@/pages/not-found-page"
+import { IncidentsPage } from "@/pages/incidents-page"
 import { VerificationAttestationPage } from "@/pages/verification-attestation-page"
 import { ProtectedRoute } from "@/routes/protected-route"
 import { PermissionRoute } from "@/routes/permission-route"
@@ -50,6 +51,8 @@ import { AssignmentsListPage, AssignmentCreatePage, AssignmentDetailPage, RolesL
 import { PermissionRequestsListPage, PermissionRequestCreatePage, PermissionRequestDetailPage } from "@/features/accounts/pages/requests-pages"
 import { VolunteerRequestDetailPage, VolunteerRequestsListPage } from "@/features/volunteers/requests-pages"
 import { VOLUNTEER_REQUEST_ACCESS, VOLUNTEER_REQUEST_PERMISSIONS as VRP } from "@/features/volunteers/requests-permissions"
+import { ACTIVITES_ACCESS } from "@/features/activites/permissions"
+import { AdministrationActivitiesPage } from "@/features/activites/pages/administration-activities-page"
 
 
 export function AppRouter() {
@@ -79,6 +82,7 @@ export function AppRouter() {
           <Route path="consultation" element={<ConsultationPage />} />
           <Route path="verification-attestation" element={<VerificationAttestationPage />} />
           <Route path="profil" element={<ProfilePage />} />
+          <Route path="incidents" element={<IncidentsPage />} />
           <Route path="profil/modifier" element={<EditProfilePage />} />
           <Route path="profil/mot-de-passe" element={<ChangePasswordPage />} />
 
@@ -116,6 +120,8 @@ export function AppRouter() {
           <Route element={<PermissionRoute permission={OP.CREATE_BED} />}><Route path="lits/nouveau" element={<BedFormPage />} /></Route>
           <Route element={<PermissionRoute permission={OP.UPDATE_BED} />}><Route path="lits/:id/modifier" element={<BedFormPage edit />} /></Route>
           <Route element={<PermissionRoute permissions={[...ORGANISATION_GROUPS.CENTER_ORGANIZATION]} />}><Route path="organisation-centre" element={<CenterOrganizationPage />} /></Route>
+
+          <Route element={<PermissionRoute permissions={[...ACTIVITES_ACCESS]} />}><Route path="activites" element={<AdministrationActivitiesPage />} /></Route>
 
           <Route element={<PermissionRoute permissions={[...KITS_GROUPS.ACCESS]} />}><Route path="kits" element={<KitsPage />} /></Route>
           <Route element={<PermissionRoute permission={KP.CREATE_BRING_ARTICLE} />}><Route path="kits/articles/nouveau-a-apporter" element={<KitArticleFormPage type="A_APPORTER" />} /></Route>

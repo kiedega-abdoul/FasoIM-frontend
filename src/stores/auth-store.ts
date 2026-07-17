@@ -7,6 +7,19 @@ import type { ContexteActeur, ListeAffectations } from "@/types/auth"
 
 type AuthStatus = "idle" | "loading" | "authenticated" | "anonymous"
 
+function persistAssignmentContext(context: ContexteActeur | null) {
+  const assignment = context?.affectation_courante
+  assignmentContextService.saveCurrentAssignmentId(assignment?.id ?? null)
+  assignmentContextService.saveCurrentAssignmentScope(assignment ? {
+    id: assignment.id,
+    est_permanente: assignment.est_permanente,
+    niveau_affectation: assignment.niveau_affectation,
+    session_id: assignment.session?.id ?? null,
+    region_code: assignment.region_code ?? "",
+    centre_id: assignment.centre_id ?? null,
+  } : null)
+}
+
 type AuthState = {
   status: AuthStatus
   context: ContexteActeur | null
@@ -32,7 +45,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const tokens = await authApi.login(username, password)
       tokenService.saveTokens(tokens)
       const context = await authApi.getCurrentContext()
-      assignmentContextService.saveCurrentAssignmentId(context.affectation_courante?.id ?? null)
+      persistAssignmentContext(context)
       set({ status: "authenticated", context, assignments: null })
     } catch (error) {
       tokenService.clearTokens()
@@ -55,7 +68,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       const context = await authApi.getCurrentContext()
-      assignmentContextService.saveCurrentAssignmentId(context.affectation_courante?.id ?? null)
+      persistAssignmentContext(context)
       set({ status: "authenticated", context })
     } catch {
       tokenService.clearTokens()
@@ -76,7 +89,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   async selectAssignment(assignmentId) {
     const context = await authApi.getAssignmentContext(assignmentId)
-    assignmentContextService.saveCurrentAssignmentId(assignmentId)
+    persistAssignmentContext(context)
     set({ context })
   },
 

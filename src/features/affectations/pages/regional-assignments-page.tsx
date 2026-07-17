@@ -72,7 +72,7 @@ export function RegionalAssignmentsPage() {
         : []
       setRows(assignmentsData)
 
-      const sessionsData = await sessionsApi.sessions()
+      const sessionsData = await sessionsApi.sessions(currentScopeParams())
       setSessions(sessionsData)
       if (!selectedSessionId && sessionsData.length) setSelectedSessionId(String(sessionsData[0].id))
 

@@ -62,7 +62,7 @@ export function ActorHomePage() {
                 size="lg"
                 className="gap-2 text-base shadow-lg"
               >
-                Accéder à la plateforme
+                Accéder à mon espace de travail
                 <ArrowRight className="size-4" />
               </Button>
               <Button

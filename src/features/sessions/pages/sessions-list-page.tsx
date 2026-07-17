@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { EmptyState, ErrorBox, Loading, PageHeader } from "@/features/accounts/components"
+import { currentAssignmentSessionParams } from "@/services/current-assignment-scope"
 import { sessionsApi } from "../api"
 import { SessionPermissionGuard, SessionStatusBadge } from "../components"
 import { formatDate, MODE_LABELS, PUBLIC_LABELS, SESSION_TYPE_LABELS } from "../labels"
@@ -28,6 +29,7 @@ export function SessionsListPage() {
     setLoading(true)
     try {
       const data = await sessionsApi.sessions({
+        ...currentAssignmentSessionParams(),
         statut: status || undefined,
         type_session: type || undefined,
         annee: year || undefined,

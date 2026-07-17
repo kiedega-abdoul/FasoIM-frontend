@@ -21,6 +21,7 @@ import {
   Loading,
   PageHeader,
 } from "@/features/accounts/components"
+import { currentAssignmentSessionParams } from "@/services/current-assignment-scope"
 
 import { importsApi } from "../api"
 import { ImportStatusBadge } from "../components"
@@ -77,6 +78,7 @@ export function ImportsListPage() {
     try {
       setRows(
         await importsApi.list({
+          ...currentAssignmentSessionParams(),
           statut: status || undefined,
           type_source: source || undefined,
         }),

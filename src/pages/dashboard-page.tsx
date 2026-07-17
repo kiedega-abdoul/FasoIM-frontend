@@ -10,6 +10,9 @@ import { KITS_GROUPS } from "@/features/kits/groups"
 import { ORGANISATION_GROUPS } from "@/features/organisation/groups"
 import { VOLUNTEER_REQUEST_PERMISSIONS } from "@/features/volunteers/requests-permissions"
 import { useAuthStore } from "@/stores/auth-store"
+import { AdministrationDashboard } from "@/workspaces/administration/dashboard"
+import { DgasDashboard } from "@/workspaces/dgas/dashboard"
+import { resolveWorkspace } from "@/workspaces/workspace-resolver"
 
 const roleMessages: Record<string, { title: string; description: string }> = {
   ADMINISTRATEUR: { title: "Administration de la plateforme", description: "Supervisez les acteurs, les rôles, les accès et le fonctionnement général de FasoIM." },
@@ -54,6 +57,15 @@ const accountsModules: ModuleAccess[] = [
 export function DashboardPage() {
   const context = useAuthStore((state) => state.context)
   const assignment = context?.affectation_courante
+  const workspace = resolveWorkspace(assignment)
+
+  if (workspace === "ADMINISTRATION") {
+    return <AdministrationDashboard />
+  }
+
+  if (workspace === "DGAS") {
+    return <DgasDashboard />
+  }
   const primaryRole = assignment?.roles[0]
   const permissions = assignment?.permissions ?? []
   const message = roleMessages[primaryRole?.code ?? ""] ?? { title: "Bienvenue dans votre espace FasoIM", description: "Retrouvez les opérations disponibles dans votre contexte de travail actuel." }

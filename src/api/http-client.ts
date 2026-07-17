@@ -26,6 +26,28 @@ httpClient.interceptors.request.use((config) => {
     config.headers["X-FasoIM-Affectation"] = String(assignmentId)
   }
 
+  const scope = assignmentContextService.getCurrentAssignmentScope()
+  const method = String(config.method ?? "get").toLowerCase()
+  const isReadRequest = method === "get" || method === "head"
+  const isPublicRequest = String(config.url ?? "").includes("/public/")
+    || String(config.url ?? "").startsWith("/auth/")
+
+  if (scope && !scope.est_permanente && isReadRequest && !isPublicRequest) {
+    const params = { ...(config.params ?? {}) } as Record<string, unknown>
+
+    if (scope.session_id && params.session_id === undefined) {
+      params.session_id = scope.session_id
+    }
+    if (scope.region_code && params.region_code === undefined) {
+      params.region_code = scope.region_code
+    }
+    if (scope.centre_id && params.centre_id === undefined) {
+      params.centre_id = scope.centre_id
+    }
+
+    config.params = params
+  }
+
   return config
 })
 

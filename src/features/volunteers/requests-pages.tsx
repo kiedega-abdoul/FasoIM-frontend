@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { currentAssignmentSessionParams } from "@/services/current-assignment-scope"
 import { useAuthStore } from "@/stores/auth-store"
 import { volunteerRequestsApi } from "./requests-api"
 import { VOLUNTEER_REQUEST_PERMISSIONS as P } from "./requests-permissions"
@@ -55,6 +56,7 @@ export function VolunteerRequestsListPage() {
     setError("")
     try {
       setItems(await volunteerRequestsApi.list({
+        ...currentAssignmentSessionParams(),
         recherche: search || undefined,
         statut_demande: status === "TOUS" ? undefined : status,
       }))
@@ -69,7 +71,7 @@ export function VolunteerRequestsListPage() {
     let cancelled = false
 
     void volunteerRequestsApi
-      .list()
+      .list(currentAssignmentSessionParams())
       .then((data) => {
         if (!cancelled) {
           setItems(data)

@@ -1,4 +1,5 @@
 import { httpClient } from "@/api/http-client"
+import { assignmentContextService } from "@/services/assignment-context-service"
 import type { ImmersionSession, ListResponse, PublicSession, SessionParameters, SessionParametersPayload, SessionPayload } from "./types"
 
 const list = <T>(data: ListResponse<T>) => Array.isArray(data) ? data : data.results
@@ -6,9 +7,17 @@ const list = <T>(data: ListResponse<T>) => Array.isArray(data) ? data : data.res
 export const sessionsApi = {
   async sessions(params?: Record<string, string | number | boolean | undefined>) {
     const response = await httpClient.get<ListResponse<ImmersionSession>>("/sessions/sessions/", { params })
-    return list(response.data)
+    const rows = list(response.data)
+    const scope = assignmentContextService.getCurrentAssignmentScope()
+
+    if (!scope || scope.est_permanente || !scope.session_id) return rows
+    return rows.filter((session) => session.id === scope.session_id)
   },
   async session(id: number) {
+    const scope = assignmentContextService.getCurrentAssignmentScope()
+    if (scope && !scope.est_permanente && scope.session_id && scope.session_id !== id) {
+      throw new Error("Cette session ne correspond pas à votre affectation courante.")
+    }
     return (await httpClient.get<ImmersionSession>(`/sessions/sessions/${id}/`)).data
   },
   async create(data: SessionPayload) {

@@ -1,4 +1,4 @@
-import { CalendarDays, Check, LoaderCircle, MapPin } from "lucide-react"
+import { CalendarDays, Check, KeyRound, LoaderCircle, MapPin, ShieldCheck } from "lucide-react"
 import { useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
@@ -44,6 +44,36 @@ export function AssignmentsPage() {
           Choisissez l’affectation dans laquelle vous souhaitez travailler. Vos menus et vos actions seront adaptés à ce contexte.
         </p>
       </div>
+
+
+      {context?.affectation_courante && (
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Card>
+            <CardContent className="flex items-center gap-4 p-5">
+              <span className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><ShieldCheck className="size-5" /></span>
+              <div><p className="text-sm text-muted-foreground">Espace courant</p><p className="mt-1 text-lg font-semibold">{context.affectation_courante.roles.map((role) => role.libelle).join(", ") || "Non défini"}</p></div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="flex items-center gap-4 p-5">
+              <span className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPin className="size-5" /></span>
+              <div><p className="text-sm text-muted-foreground">Périmètre</p><p className="mt-1 text-lg font-semibold capitalize">{context.affectation_courante.niveau_affectation}</p></div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="flex items-center gap-4 p-5">
+              <span className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><CalendarDays className="size-5" /></span>
+              <div><p className="text-sm text-muted-foreground">Session</p><p className="mt-1 text-lg font-semibold">{context.affectation_courante.session?.nom || "Toutes les sessions"}</p></div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="flex items-center gap-4 p-5">
+              <span className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><KeyRound className="size-5" /></span>
+              <div><p className="text-sm text-muted-foreground">Accès actifs</p><p className="mt-1 text-lg font-semibold">{context.affectation_courante.permissions.length}</p></div>
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       {loading ? (
         <div className="flex min-h-48 items-center justify-center gap-3 text-muted-foreground">
