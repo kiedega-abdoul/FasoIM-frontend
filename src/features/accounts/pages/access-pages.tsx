@@ -41,18 +41,18 @@ export function AssignmentsListPage(){
 
   return <>
     <PageHeader
-      title="Gestion des affectations"
-      description="Consultez et gérez les affectations des acteurs internes."
+      title="Affectations des acteurs"
+      description="Définissez le contexte de travail et les responsabilités de chaque acteur."
       backTo="/app"
       actionTo="/app/affectations/nouvelle"
-      actionLabel="Nouvelle affectation"
+      actionLabel="Affecter un acteur"
       actionPermission={P.ASSIGN_ACTOR}
     />
 
     <div className="mb-6">
       <Input
         className="h-12 rounded-xl px-4 text-base"
-        placeholder="Rechercher par acteur, périmètre, session, région ou centre"
+        placeholder="Rechercher par acteur, contexte, session, région ou centre"
         value={query}
         onChange={x=>setQuery(x.target.value)}
       />
@@ -67,7 +67,7 @@ export function AssignmentsListPage(){
             <TableHeader>
               <TableRow>
                 <TableHead className="h-14 px-5">Acteur</TableHead>
-                <TableHead className="h-14 px-5">Périmètre</TableHead>
+                <TableHead className="h-14 px-5">Contexte autorisé</TableHead>
                 <TableHead className="h-14 px-5">Session</TableHead>
                 <TableHead className="h-14 px-5">Statut</TableHead>
                 <TableHead className="h-14 px-5"/>
@@ -181,8 +181,8 @@ export function AssignmentCreatePage(){
 
   return <>
     <PageHeader
-      title="Nouvelle affectation"
-      description="Choisissez les informations visibles. Les identifiants techniques sont gérés automatiquement."
+      title="Affecter un acteur"
+      description="Choisissez la personne, son contexte de travail et la période concernée."
       backTo="/app/affectations"
     />
 
@@ -191,13 +191,13 @@ export function AssignmentCreatePage(){
         <form onSubmit={submit} className="space-y-6">
           <section>
             <div className="mb-5">
-              <h2 className="text-xl font-semibold">Acteur et durée</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Sélectionnez l’acteur puis indiquez si l’affectation est permanente ou liée à une session.</p>
+              <h2 className="text-xl font-semibold">Personne et période</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Sélectionnez la personne puis indiquez si l’affectation est permanente ou liée à une session.</p>
             </div>
             <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Acteur *">
+              <Field label="Personne *">
                 <select className="h-12 w-full rounded-xl border bg-background px-4 text-base" value={f.acteur_id} onChange={x=>setF(v=>({...v,acteur_id:x.target.value}))} required>
-                  <option value="">Sélectionner un acteur</option>
+                  <option value="">Sélectionner une personne</option>
                   {actors.map(a=><option key={a.id} value={a.id}>{a.nom_complet||a.username}{a.email?` · ${a.email}`:''}</option>)}
                 </select>
               </Field>
@@ -217,7 +217,7 @@ export function AssignmentCreatePage(){
               <p className="mt-1 text-sm text-muted-foreground">Les champs Région et Centre apparaissent uniquement lorsqu’ils sont nécessaires.</p>
             </div>
             <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Périmètre *">
+              <Field label="Contexte *">
                 <select className="h-12 w-full rounded-xl border bg-background px-4 text-base" value={f.niveau_affectation} onChange={x=>updateNiveau(x.target.value)}>
                   <option value="plateforme">Plateforme</option>
                   <option value="national">National</option>
@@ -242,7 +242,7 @@ export function AssignmentCreatePage(){
 
           <div className="flex flex-col-reverse gap-3 border-t pt-6 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" className="h-12 rounded-xl px-6 font-semibold" onClick={()=>nav('/app/affectations')}>Annuler</Button>
-            <Button type="submit" className="h-12 rounded-xl px-8 font-semibold" disabled={submitting}>{submitting?'Création...':"Créer l’affectation"}</Button>
+            <Button type="submit" className="h-12 rounded-xl px-8 font-semibold" disabled={submitting}>{submitting?'Création...':"Enregistrer l’affectation"}</Button>
           </div>
         </form>
       </CardContent>
@@ -259,6 +259,8 @@ export function AssignmentDetailPage(){
   const[roleId,setRoleId]=useState('');
   const[permissionId,setPermissionId]=useState('');
   const[e,setE]=useState('');
+  const[actionError,setActionError]=useState('');
+  const[actionMessage,setActionMessage]=useState('');
   async function load(){
     if(!id)return;
     try{
@@ -267,7 +269,7 @@ export function AssignmentDetailPage(){
         accountsApi.assignment(assignmentId),
         accountsApi.roleAssignments({affectation_acteur_id:assignmentId}),
         accountsApi.directPermissions({affectation_acteur_id:assignmentId}),
-        accountsApi.roles(),
+        accountsApi.assignableRoles(assignmentId),
         accountsApi.permissions(),
       ]);
       setX(assignment);setRoleRows(roleAssignments);setDirectRows(directPermissions);setRoles(availableRoles);setPerms(availablePermissions);
@@ -275,22 +277,45 @@ export function AssignmentDetailPage(){
   }
   useEffect(()=>{void load()},[id]);
   if(e)return<ErrorBox message={e}/>;if(!x)return<Loading/>;
-  return <><PageHeader title={`Affectation de ${x.acteur.nom_complet||x.acteur.username}`} backTo="/app/affectations"/>
-    <Card><CardContent className="grid gap-6 p-7 sm:grid-cols-2">{Object.entries({Niveau:x.niveau_affectation,Session:x.session_nom||'Permanente',Région:x.region_code||'—',Centre:x.centre_id||'—',Début:x.date_debut,Fin:x.date_fin||'—',Statut:x.statut}).map(([k,v])=><div key={k}><p className="text-sm text-muted-foreground">{k}</p><p className="font-semibold">{v}</p></div>)}</CardContent></Card>
+  const assignment=x;
+  const isActive=assignment.statut==='active'||assignment.statut==='actif';
+  const isSuspended=assignment.statut==='suspendue'||assignment.statut==='suspendu';
+  const statusLabel=({active:'Active',actif:'Active',suspendue:'Suspendue',suspendu:'Suspendue',terminee:'Terminée',retiree:'Retirée',retire:'Retirée'} as Record<string,string>)[assignment.statut]||assignment.statut;
+  async function runAction(action:()=>Promise<unknown>,success:string){
+    setActionError('');setActionMessage('');
+    try{await action();setActionMessage(success);await load()}
+    catch(y){setActionError(getApiErrorMessage(y))}
+  }
+  async function assignRole(){
+    if(!roleId){setActionError('Choisissez un rôle avant de valider.');return}
+    const selected=roles.find(r=>String(r.id)===roleId);
+    setActionError('');setActionMessage('');
+    try{
+      await accountsApi.createRoleAssignment({affectation_acteur_id:assignment.id,role_id:+roleId});
+      setRoleId('');
+      setActionMessage(selected?`La responsabilité « ${selected.libelle} » a été ajoutée.`:'La responsabilité a été ajoutée.');
+      await load();
+    }catch(y){setActionError(getApiErrorMessage(y))}
+  }
+  return <><PageHeader title={`Affectation de ${assignment.acteur.nom_complet||assignment.acteur.username}`} backTo="/app/affectations"/>
+    <Card><CardContent className="grid gap-6 p-7 sm:grid-cols-2">{Object.entries({Niveau:assignment.niveau_affectation,Session:assignment.session_nom||'Permanente',Région:assignment.region_nom||assignment.region_code||'—',Centre:assignment.centre_nom||'—',Début:assignment.date_debut,Fin:assignment.date_fin||'—',Statut:statusLabel}).map(([k,v])=><div key={k}><p className="text-sm text-muted-foreground">{k}</p><p className="font-semibold">{v}</p></div>)}</CardContent></Card>
     <div className="mt-5 flex flex-wrap gap-3">
-      <PermissionGuard permission={P.SUSPEND_ACTOR_ASSIGNMENT}><Button variant="outline" onClick={async()=>{await accountsApi.suspendAssignment(x.id);await load()}}>Suspendre</Button></PermissionGuard>
-      <PermissionGuard permission={P.ENABLE_ACTOR_ASSIGNMENT}><Button onClick={async()=>{await accountsApi.enableAssignment(x.id);await load()}}>Réactiver</Button></PermissionGuard>
-      <PermissionGuard permission={P.REMOVE_ACTOR_ASSIGNMENT}><Button variant="destructive" onClick={async()=>{await accountsApi.removeAssignment(x.id);location.assign('/app/affectations')}}>Retirer l’affectation</Button></PermissionGuard>
+      {isActive&&<PermissionGuard permission={P.SUSPEND_ACTOR_ASSIGNMENT}><Button variant="outline" onClick={()=>runAction(()=>accountsApi.suspendAssignment(assignment.id),'L’affectation a été suspendue.')}>Suspendre l’affectation</Button></PermissionGuard>}
+      {isSuspended&&<PermissionGuard permission={P.ENABLE_ACTOR_ASSIGNMENT}><Button onClick={()=>runAction(()=>accountsApi.enableAssignment(assignment.id),'L’affectation a été réactivée.')}>Réactiver l’affectation</Button></PermissionGuard>}
+      <PermissionGuard permission={P.REMOVE_ACTOR_ASSIGNMENT}><Button variant="destructive" onClick={async()=>{setActionError('');try{await accountsApi.removeAssignment(assignment.id);location.assign('/app/affectations')}catch(y){setActionError(getApiErrorMessage(y))}}}>Retirer l’affectation</Button></PermissionGuard>
     </div>
+    {actionError&&<div className="mt-4"><ErrorBox message={actionError}/></div>}
+    {actionMessage&&<p className="mt-4 rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm text-primary">{actionMessage}</p>}
 
-    <section className="mt-8"><h2 className="text-2xl font-bold">Rôles de l’affectation</h2>
-      <PermissionGuard permission={P.ASSIGN_ROLE}><Card className="my-4"><CardContent className="flex gap-3 p-5"><select className="h-11 flex-1 rounded-xl border bg-background px-3" value={roleId} onChange={z=>setRoleId(z.target.value)}><option value="">Choisir un rôle</option>{roles.map(r=><option key={r.id} value={r.id}>{r.libelle}</option>)}</select><Button onClick={async()=>{if(roleId){await accountsApi.createRoleAssignment({affectation_acteur_id:x.id,role_id:+roleId});setRoleId('');await load()}}}>Attribuer</Button></CardContent></Card></PermissionGuard>
-      {roleRows.length===0?<EmptyState message="Aucun rôle attribué."/>:<Card><Table><TableHeader><TableRow><TableHead>Rôle</TableHead><TableHead>Expiration</TableHead><TableHead/></TableRow></TableHeader><TableBody>{roleRows.map(r=><TableRow key={r.id}><TableCell>{r.role.libelle}</TableCell><TableCell>{r.date_expiration||'Aucune'}</TableCell><TableCell className="text-right"><PermissionGuard permission={P.REMOVE_ROLE}><Button size="sm" variant="destructive" onClick={async()=>{await accountsApi.removeRoleAssignment(r.id);await load()}}>Retirer</Button></PermissionGuard></TableCell></TableRow>)}</TableBody></Table></Card>}
+    <section className="mt-8"><h2 className="text-2xl font-bold">Responsabilités dans cette affectation</h2>
+      <p className="mt-1 text-sm text-muted-foreground">Ajoutez la responsabilité que cette personne exercera dans ce contexte.</p>
+      <PermissionGuard permission={P.ASSIGN_ROLE}><Card className="my-4"><CardContent className="space-y-4 p-5"><div className="flex gap-3"><select className="h-11 flex-1 rounded-xl border bg-background px-3" value={roleId} onChange={z=>{setRoleId(z.target.value);setActionError('');setActionMessage('')}}><option value="">Choisir une responsabilité à ajouter</option>{roles.map(r=><option key={r.id} value={r.id}>{r.libelle}</option>)}</select><Button onClick={assignRole} disabled={roles.length===0}>Ajouter cette responsabilité</Button></div><p className="text-sm text-muted-foreground">La liste affiche uniquement les responsabilités que vous pouvez ajouter ici.</p></CardContent></Card></PermissionGuard>
+      {roleRows.length===0?<EmptyState message="Aucune responsabilité ajoutée pour cette affectation."/>:<Card><Table><TableHeader><TableRow><TableHead>Responsabilité ajoutée</TableHead><TableHead>Fin prévue</TableHead><TableHead/></TableRow></TableHeader><TableBody>{roleRows.map(r=><TableRow key={r.id}><TableCell>{r.role.libelle}</TableCell><TableCell>{r.date_expiration||'Aucune'}</TableCell><TableCell className="text-right"><PermissionGuard permission={P.REMOVE_ROLE}><Button size="sm" variant="destructive" onClick={()=>runAction(()=>accountsApi.removeRoleAssignment(r.id),'La responsabilité a été retirée.')}>Retirer</Button></PermissionGuard></TableCell></TableRow>)}</TableBody></Table></Card>}
     </section>
 
-    <section className="mt-8"><h2 className="text-2xl font-bold">Permissions directes</h2>
-      <PermissionGuard permission={P.ASSIGN_DIRECT_PERMISSION}><Card className="my-4"><CardContent className="flex gap-3 p-5"><select className="h-11 flex-1 rounded-xl border bg-background px-3" value={permissionId} onChange={z=>setPermissionId(z.target.value)}><option value="">Choisir une permission</option>{perms.map(p=><option key={p.id} value={p.id}>{p.module} · {p.libelle}</option>)}</select><Button onClick={async()=>{if(permissionId){await accountsApi.addDirectPermission({affectation_acteur_id:x.id,permission_id:+permissionId,motif:'Attribution depuis la fiche de l’affectation'});setPermissionId('');await load()}}}>Attribuer</Button></CardContent></Card></PermissionGuard>
-      {directRows.length===0?<EmptyState message="Aucune permission directe."/>:<Card><Table><TableHeader><TableRow><TableHead>Permission</TableHead><TableHead>Motif</TableHead><TableHead/></TableRow></TableHeader><TableBody>{directRows.map(r=><TableRow key={r.id}><TableCell>{r.permission.libelle}</TableCell><TableCell>{r.motif||'—'}</TableCell><TableCell className="text-right"><PermissionGuard permission={P.REMOVE_DIRECT_PERMISSION}><Button size="sm" variant="destructive" onClick={async()=>{await accountsApi.removeDirectPermission(r.id);await load()}}>Retirer</Button></PermissionGuard></TableCell></TableRow>)}</TableBody></Table></Card>}
+    <section className="mt-8"><h2 className="text-2xl font-bold">Autorisations particulières</h2>
+      <PermissionGuard permission={P.ASSIGN_DIRECT_PERMISSION}><Card className="my-4"><CardContent className="flex gap-3 p-5"><select className="h-11 flex-1 rounded-xl border bg-background px-3" value={permissionId} onChange={z=>setPermissionId(z.target.value)}><option value="">Choisir une autorisation</option>{perms.map(p=><option key={p.id} value={p.id}>{p.module} · {p.libelle}</option>)}</select><Button onClick={async()=>{if(permissionId){await accountsApi.addDirectPermission({affectation_acteur_id:assignment.id,permission_id:+permissionId,motif:'Ajout depuis la fiche de l’affectation'});setPermissionId('');await load()}}}>Attribuer</Button></CardContent></Card></PermissionGuard>
+      {directRows.length===0?<EmptyState message="Aucune autorisation particulière."/>:<Card><Table><TableHeader><TableRow><TableHead>Autorisation</TableHead><TableHead>Motif</TableHead><TableHead/></TableRow></TableHeader><TableBody>{directRows.map(r=><TableRow key={r.id}><TableCell>{r.permission.libelle}</TableCell><TableCell>{r.motif||'—'}</TableCell><TableCell className="text-right"><PermissionGuard permission={P.REMOVE_DIRECT_PERMISSION}><Button size="sm" variant="destructive" onClick={async()=>{await accountsApi.removeDirectPermission(r.id);await load()}}>Retirer</Button></PermissionGuard></TableCell></TableRow>)}</TableBody></Table></Card>}
     </section>
   </>
 }
@@ -327,18 +352,18 @@ export function RolesListPage(){
 
   return <>
     <PageHeader
-      title="Gestion des rôles"
-      description="Créez les rôles et définissez les permissions associées."
+      title="Rôles et responsabilités"
+      description="Préparez les responsabilités qui pourront être données aux acteurs."
       backTo="/app"
       actionTo="/app/roles/nouveau"
-      actionLabel="Créer un rôle"
+      actionLabel="Créer une responsabilité"
       actionPermission={P.CREATE_ROLE}
     />
 
     <div className="mb-6">
       <Input
         className="h-12 rounded-xl px-4 text-base"
-        placeholder="Rechercher un rôle par libellé, code ou périmètre"
+        placeholder="Rechercher par nom, contexte ou description"
         value={query}
         onChange={x=>setQuery(x.target.value)}
       />
@@ -347,14 +372,14 @@ export function RolesListPage(){
     {e&&<ErrorBox message={e}/>}
 
     {!e&&filtered.length===0
-      ? <EmptyState message="Aucun rôle trouvé."/>
+      ? <EmptyState message="Aucune responsabilité trouvée."/>
       : <Card className="overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="h-14 px-5">Rôle</TableHead>
-                <TableHead className="h-14 px-5">Périmètre</TableHead>
-                <TableHead className="h-14 px-5">Hiérarchie</TableHead>
+                <TableHead className="h-14 px-5">Responsabilité</TableHead>
+                <TableHead className="h-14 px-5">Contexte autorisé</TableHead>
+                <TableHead className="h-14 px-5">Niveau</TableHead>
                 <TableHead className="h-14 px-5">Statut</TableHead>
                 <TableHead className="h-14 px-5"/>
               </TableRow>
@@ -495,10 +520,10 @@ export function RoleFormPage({edit=false}:{edit?:boolean}){
 
   return <>
     <PageHeader
-      title={edit?'Modifier le rôle':'Créer un rôle'}
+      title={edit?'Modifier la responsabilité':'Créer une responsabilité'}
       description={edit
-        ? 'Modifiez les informations et les permissions du rôle.'
-        : 'Définissez le rôle et sélectionnez directement ses permissions.'
+        ? 'Modifiez les informations et les autorisations de cette responsabilité.'
+        : 'Définissez la responsabilité et sélectionnez ses autorisations.'
       }
       backTo={edit&&roleId?`/app/roles/${roleId}`:'/app/roles'}
     />
@@ -510,7 +535,7 @@ export function RoleFormPage({edit=false}:{edit?:boolean}){
             <div className="mb-5">
               <h2 className="text-xl font-semibold">Informations générales</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Le code technique et le statut sont générés automatiquement par le système.
+                Le nom affiché doit être compréhensible pour les utilisateurs.
               </p>
             </div>
 
@@ -566,9 +591,9 @@ export function RoleFormPage({edit=false}:{edit?:boolean}){
           <section className="border-t pt-6">
             <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="text-xl font-semibold">Permissions du rôle</h2>
+                <h2 className="text-xl font-semibold">Autorisations incluses</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Sélectionnez uniquement les actions nécessaires à ce rôle.
+                  Sélectionnez uniquement les actions nécessaires à cette responsabilité.
                 </p>
               </div>
               <p className="text-sm font-semibold text-primary">{selected.length} sélectionnée(s)</p>
@@ -628,7 +653,7 @@ export function RoleFormPage({edit=false}:{edit?:boolean}){
                 ? 'Enregistrement...'
                 : edit
                   ? 'Enregistrer les modifications'
-                  : 'Créer le rôle'
+                  : 'Créer la responsabilité'
               }
             </Button>
           </div>
@@ -637,12 +662,12 @@ export function RoleFormPage({edit=false}:{edit?:boolean}){
     </Card>
   </>
 }
-export function RoleDetailPage(){const{roleId}=useParams();const[r,setR]=useState<Role|null>(null);useEffect(()=>{if(roleId)accountsApi.role(+roleId).then(setR)},[roleId]);if(!r)return<Loading/>;return <><PageHeader title={r.libelle} backTo="/app/roles"/><Card><CardContent className="grid gap-6 p-7 sm:grid-cols-2">{Object.entries({Code:r.code,Description:r.description||'—',Niveau:r.niveau,Périmètre:r.perimetre_autorise,Statut:r.statut,'Rôle système':r.est_systeme?'Oui':'Non'}).map(([k,v])=><div key={k}><p className="text-sm text-muted-foreground">{k}</p><p className="font-semibold">{v}</p></div>)}</CardContent></Card><div className="mt-5 flex gap-3"><PermissionGuard permission={P.UPDATE_ROLE}><Button render={<Link to={`/app/roles/${r.id}/modifier`}/>}>Modifier</Button></PermissionGuard><PermissionGuard permission={P.VIEW_ROLE}><Button render={<Link to={`/app/roles/${r.id}/permissions`}/>} variant="outline">Permissions du rôle</Button></PermissionGuard><PermissionGuard permission={P.DISABLE_ROLE}><Button variant="destructive" onClick={()=>accountsApi.disableRole(r.id).then(()=>location.reload())}>Désactiver</Button></PermissionGuard></div></>}
-export function RolePermissionsPage(){const{roleId}=useParams();const[rows,setRows]=useState<RolePermission[]>([]);const[perms,setPerms]=useState<Permission[]>([]);const[selected,setSelected]=useState('');async function load(){if(!roleId)return;setRows(await accountsApi.rolePermissions({role_id:+roleId}));setPerms(await accountsApi.permissions())}useEffect(()=>{void load()},[roleId]);return <><PageHeader title="Permissions du rôle" backTo={`/app/roles/${roleId}`}/><PermissionGuard permission={P.ADD_ROLE_PERMISSION}><Card className="mb-5"><CardContent className="flex gap-3 p-5"><select className="h-11 flex-1 rounded-xl border bg-background px-3" value={selected} onChange={x=>setSelected(x.target.value)}><option value="">Choisir une permission</option>{perms.map(p=><option key={p.id} value={p.id}>{p.module} · {p.libelle}</option>)}</select><Button onClick={async()=>{if(roleId&&selected){await accountsApi.addRolePermission({role_id:+roleId,permission_id:+selected});setSelected('');await load()}}}>Ajouter</Button></CardContent></Card></PermissionGuard>{rows.length===0?<EmptyState message="Aucune permission attribuée."/>:<Card><Table><TableHeader><TableRow><TableHead>Permission</TableHead><TableHead>Délégable</TableHead><TableHead/></TableRow></TableHeader><TableBody>{rows.map(x=><TableRow key={x.id}><TableCell>{x.permission_libelle}<p className="text-sm text-muted-foreground">{x.permission_code}</p></TableCell><TableCell>{x.est_delegable?'Oui':'Non'}</TableCell><TableCell><PermissionGuard permission={P.REMOVE_ROLE_PERMISSION}><Button variant="destructive" size="sm" onClick={async()=>{await accountsApi.removeRolePermission(x.id);await load()}}>Retirer</Button></PermissionGuard></TableCell></TableRow>)}</TableBody></Table></Card>}</>}
+export function RoleDetailPage(){const{roleId}=useParams();const[r,setR]=useState<Role|null>(null);useEffect(()=>{if(roleId)accountsApi.role(+roleId).then(setR)},[roleId]);if(!r)return<Loading/>;return <><PageHeader title={r.libelle} backTo="/app/roles"/><Card><CardContent className="grid gap-6 p-7 sm:grid-cols-2">{Object.entries({Code:r.code,Description:r.description||'—',Niveau:r.niveau,Périmètre:r.perimetre_autorise,Statut:r.statut,'Rôle système':r.est_systeme?'Oui':'Non'}).map(([k,v])=><div key={k}><p className="text-sm text-muted-foreground">{k}</p><p className="font-semibold">{v}</p></div>)}</CardContent></Card><div className="mt-5 flex gap-3"><PermissionGuard permission={P.UPDATE_ROLE}><Button render={<Link to={`/app/roles/${r.id}/modifier`}/>}>Modifier</Button></PermissionGuard><PermissionGuard permission={P.VIEW_ROLE}><Button render={<Link to={`/app/roles/${r.id}/permissions`}/>} variant="outline">Autorisations incluses</Button></PermissionGuard><PermissionGuard permission={P.DISABLE_ROLE}><Button variant="destructive" onClick={()=>accountsApi.disableRole(r.id).then(()=>location.reload())}>Désactiver</Button></PermissionGuard></div></>}
+export function RolePermissionsPage(){const{roleId}=useParams();const[rows,setRows]=useState<RolePermission[]>([]);const[perms,setPerms]=useState<Permission[]>([]);const[selected,setSelected]=useState('');async function load(){if(!roleId)return;setRows(await accountsApi.rolePermissions({role_id:+roleId}));setPerms(await accountsApi.permissions())}useEffect(()=>{void load()},[roleId]);return <><PageHeader title="Autorisations incluses" backTo={`/app/roles/${roleId}`}/><PermissionGuard permission={P.ADD_ROLE_PERMISSION}><Card className="mb-5"><CardContent className="flex gap-3 p-5"><select className="h-11 flex-1 rounded-xl border bg-background px-3" value={selected} onChange={x=>setSelected(x.target.value)}><option value="">Choisir une autorisation</option>{perms.map(p=><option key={p.id} value={p.id}>{p.module} · {p.libelle}</option>)}</select><Button onClick={async()=>{if(roleId&&selected){await accountsApi.addRolePermission({role_id:+roleId,permission_id:+selected});setSelected('');await load()}}}>Ajouter</Button></CardContent></Card></PermissionGuard>{rows.length===0?<EmptyState message="Aucune autorisation ajoutée."/>:<Card><Table><TableHeader><TableRow><TableHead>Autorisation</TableHead><TableHead>Délégable</TableHead><TableHead/></TableRow></TableHeader><TableBody>{rows.map(x=><TableRow key={x.id}><TableCell>{x.permission_libelle}<p className="text-sm text-muted-foreground">{x.permission_code}</p></TableCell><TableCell>{x.est_delegable?'Oui':'Non'}</TableCell><TableCell><PermissionGuard permission={P.REMOVE_ROLE_PERMISSION}><Button variant="destructive" size="sm" onClick={async()=>{await accountsApi.removeRolePermission(x.id);await load()}}>Retirer</Button></PermissionGuard></TableCell></TableRow>)}</TableBody></Table></Card>}</>}
 
-export function PermissionsListPage(){const[p,setP]=useState<Permission[]>([]);const[module,setModule]=useState('');useEffect(()=>{accountsApi.permissions(module?{module}:undefined).then(setP)},[module]);const modules=useMemo(()=>[...new Set(p.map(x=>x.module))],[p]);return <><PageHeader title="Gestion des permissions" description="Consultez le catalogue et accédez aux demandes de permissions."/><div className="mb-5 flex flex-wrap gap-3"><PermissionGuard permission={P.LIST_PERMISSION_REQUESTS}><Button render={<Link to="/app/permissions/demandes"/>} variant="outline">Demandes de permissions</Button></PermissionGuard><PermissionGuard permission={P.REQUEST_PERMISSION}><Button render={<Link to="/app/permissions/demandes/nouvelle"/>}>Demander une permission</Button></PermissionGuard></div><div className="mb-5"><select className="h-11 rounded-xl border bg-background px-3" value={module} onChange={x=>setModule(x.target.value)}><option value="">Tous les modules</option>{modules.map(m=><option key={m}>{m}</option>)}</select></div><div className="grid gap-4 md:grid-cols-2">{p.map(x=><Card key={x.id}><CardContent className="p-5"><div className="flex justify-between"><div><p className="font-semibold">{x.libelle}</p><p className="text-sm text-muted-foreground">{x.module} · {x.code}</p></div><Button render={<Link to={`/app/permissions/${x.id}`}/>} variant="outline" size="sm">Voir</Button></div></CardContent></Card>)}</div></>}
+export function PermissionsListPage(){const[p,setP]=useState<Permission[]>([]);const[module,setModule]=useState('');useEffect(()=>{accountsApi.permissions(module?{module}:undefined).then(setP)},[module]);const modules=useMemo(()=>[...new Set(p.map(x=>x.module))],[p]);return <><PageHeader title="Autorisations" description="Consultez les autorisations disponibles et suivez les demandes d’accès."/><div className="mb-5 flex flex-wrap gap-3"><PermissionGuard permission={P.LIST_PERMISSION_REQUESTS}><Button render={<Link to="/app/permissions/demandes"/>} variant="outline">Demandes d’accès</Button></PermissionGuard><PermissionGuard permission={P.REQUEST_PERMISSION}><Button render={<Link to="/app/permissions/demandes/nouvelle"/>}>Demander un accès</Button></PermissionGuard></div><div className="mb-5"><select className="h-11 rounded-xl border bg-background px-3" value={module} onChange={x=>setModule(x.target.value)}><option value="">Toutes les familles</option>{modules.map(m=><option key={m}>{m}</option>)}</select></div><div className="grid gap-4 md:grid-cols-2">{p.map(x=><Card key={x.id}><CardContent className="p-5"><div className="flex justify-between"><div><p className="font-semibold">{x.libelle}</p><p className="text-sm text-muted-foreground">{x.module} · {x.code}</p></div><Button render={<Link to={`/app/permissions/${x.id}`}/>} variant="outline" size="sm">Voir</Button></div></CardContent></Card>)}</div></>}
 export function PermissionDetailPage(){const{permissionId}=useParams();const[p,setP]=useState<Permission|null>(null);useEffect(()=>{if(permissionId)accountsApi.permission(+permissionId).then(setP)},[permissionId]);if(!p)return<Loading/>;return <><PageHeader title={p.libelle} backTo="/app/permissions"/><Card><CardContent className="space-y-5 p-7"><p><b>Code :</b> {p.code}</p><p><b>Module :</b> {p.module}</p><p><b>Description :</b> {p.description||'—'}</p><p><b>Statut :</b> {p.statut}</p></CardContent></Card></>}
 
 export function RoleAssignmentsPage(){const[rows,setRows]=useState<RoleAssignment[]>([]);const[assignments,setAssignments]=useState<ActorAssignment[]>([]);const[roles,setRoles]=useState<Role[]>([]);const[f,setF]=useState({affectation_acteur_id:'',role_id:'',date_expiration:''});async function load(){setRows(await accountsApi.roleAssignments());setAssignments(await accountsApi.assignments());setRoles(await accountsApi.roles())}useEffect(()=>{void load()},[]);return <><PageHeader title="Attributions de rôles"/><PermissionGuard permission={P.ASSIGN_ROLE}><Card className="mb-5"><CardContent className="grid gap-3 p-5 sm:grid-cols-4"><select className="h-11 rounded-xl border bg-background px-3" value={f.affectation_acteur_id} onChange={x=>setF(v=>({...v,affectation_acteur_id:x.target.value}))}><option value="">Affectation</option>{assignments.map(a=><option key={a.id} value={a.id}>{a.acteur.nom_complet} · {a.niveau_affectation}</option>)}</select><select className="h-11 rounded-xl border bg-background px-3" value={f.role_id} onChange={x=>setF(v=>({...v,role_id:x.target.value}))}><option value="">Rôle</option>{roles.map(r=><option key={r.id} value={r.id}>{r.libelle}</option>)}</select><Input type="date" value={f.date_expiration} onChange={x=>setF(v=>({...v,date_expiration:x.target.value}))}/><Button onClick={async()=>{await accountsApi.createRoleAssignment({affectation_acteur_id:+f.affectation_acteur_id,role_id:+f.role_id,date_expiration:f.date_expiration||null});await load()}}>Attribuer</Button></CardContent></Card></PermissionGuard><Card><Table><TableHeader><TableRow><TableHead>Affectation</TableHead><TableHead>Rôle</TableHead><TableHead>Expiration</TableHead><TableHead/></TableRow></TableHeader><TableBody>{rows.map(x=><TableRow key={x.id}><TableCell>#{x.affectation_acteur_id}</TableCell><TableCell>{x.role.libelle}</TableCell><TableCell>{x.date_expiration||'Aucune'}</TableCell><TableCell><PermissionGuard permission={P.REMOVE_ROLE}><Button variant="destructive" size="sm" onClick={async()=>{await accountsApi.removeRoleAssignment(x.id);await load()}}>Retirer</Button></PermissionGuard></TableCell></TableRow>)}</TableBody></Table></Card></>}
-export function DirectPermissionsPage(){const[rows,setRows]=useState<DirectPermission[]>([]);const[assignments,setAssignments]=useState<ActorAssignment[]>([]);const[perms,setPerms]=useState<Permission[]>([]);const[f,setF]=useState({affectation_acteur_id:'',permission_id:'',motif:''});async function load(){setRows(await accountsApi.directPermissions());setAssignments(await accountsApi.assignments());setPerms(await accountsApi.permissions())}useEffect(()=>{void load()},[]);return <><PageHeader title="Permissions directes"/><PermissionGuard permission={P.ASSIGN_DIRECT_PERMISSION}><Card className="mb-5"><CardContent className="grid gap-3 p-5 sm:grid-cols-4"><select className="h-11 rounded-xl border bg-background px-3" value={f.affectation_acteur_id} onChange={x=>setF(v=>({...v,affectation_acteur_id:x.target.value}))}><option value="">Affectation</option>{assignments.map(a=><option key={a.id} value={a.id}>{a.acteur.nom_complet}</option>)}</select><select className="h-11 rounded-xl border bg-background px-3" value={f.permission_id} onChange={x=>setF(v=>({...v,permission_id:x.target.value}))}><option value="">Permission</option>{perms.map(p=><option key={p.id} value={p.id}>{p.libelle}</option>)}</select><Input placeholder="Motif" value={f.motif} onChange={x=>setF(v=>({...v,motif:x.target.value}))}/><Button onClick={async()=>{await accountsApi.addDirectPermission({affectation_acteur_id:+f.affectation_acteur_id,permission_id:+f.permission_id,motif:f.motif});await load()}}>Attribuer</Button></CardContent></Card></PermissionGuard><Card><Table><TableHeader><TableRow><TableHead>Affectation</TableHead><TableHead>Permission</TableHead><TableHead>Motif</TableHead><TableHead/></TableRow></TableHeader><TableBody>{rows.map(x=><TableRow key={x.id}><TableCell>#{x.affectation_acteur_id}</TableCell><TableCell>{x.permission.libelle}</TableCell><TableCell>{x.motif||'—'}</TableCell><TableCell><PermissionGuard permission={P.REMOVE_DIRECT_PERMISSION}><Button variant="destructive" size="sm" onClick={async()=>{await accountsApi.removeDirectPermission(x.id);await load()}}>Retirer</Button></PermissionGuard></TableCell></TableRow>)}</TableBody></Table></Card></>}
+export function DirectPermissionsPage(){const[rows,setRows]=useState<DirectPermission[]>([]);const[assignments,setAssignments]=useState<ActorAssignment[]>([]);const[perms,setPerms]=useState<Permission[]>([]);const[f,setF]=useState({affectation_acteur_id:'',permission_id:'',motif:''});async function load(){setRows(await accountsApi.directPermissions());setAssignments(await accountsApi.assignments());setPerms(await accountsApi.permissions())}useEffect(()=>{void load()},[]);return <><PageHeader title="Autorisations particulières"/><PermissionGuard permission={P.ASSIGN_DIRECT_PERMISSION}><Card className="mb-5"><CardContent className="grid gap-3 p-5 sm:grid-cols-4"><select className="h-11 rounded-xl border bg-background px-3" value={f.affectation_acteur_id} onChange={x=>setF(v=>({...v,affectation_acteur_id:x.target.value}))}><option value="">Affectation</option>{assignments.map(a=><option key={a.id} value={a.id}>{a.acteur.nom_complet}</option>)}</select><select className="h-11 rounded-xl border bg-background px-3" value={f.permission_id} onChange={x=>setF(v=>({...v,permission_id:x.target.value}))}><option value="">Permission</option>{perms.map(p=><option key={p.id} value={p.id}>{p.libelle}</option>)}</select><Input placeholder="Motif" value={f.motif} onChange={x=>setF(v=>({...v,motif:x.target.value}))}/><Button onClick={async()=>{await accountsApi.addDirectPermission({affectation_acteur_id:+f.affectation_acteur_id,permission_id:+f.permission_id,motif:f.motif});await load()}}>Attribuer</Button></CardContent></Card></PermissionGuard><Card><Table><TableHeader><TableRow><TableHead>Affectation</TableHead><TableHead>Autorisation</TableHead><TableHead>Motif</TableHead><TableHead/></TableRow></TableHeader><TableBody>{rows.map(x=><TableRow key={x.id}><TableCell>#{x.affectation_acteur_id}</TableCell><TableCell>{x.permission.libelle}</TableCell><TableCell>{x.motif||'—'}</TableCell><TableCell><PermissionGuard permission={P.REMOVE_DIRECT_PERMISSION}><Button variant="destructive" size="sm" onClick={async()=>{await accountsApi.removeDirectPermission(x.id);await load()}}>Retirer</Button></PermissionGuard></TableCell></TableRow>)}</TableBody></Table></Card></>}
 function Field({label,children}:{label:string;children:React.ReactNode}){return <div className="space-y-2"><Label>{label}</Label>{children}</div>}

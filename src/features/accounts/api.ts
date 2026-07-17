@@ -5,8 +5,8 @@ const list = <T>(data: ListResponse<T>) => Array.isArray(data) ? data : data.res
 export const accountsApi = {
   async actors(params?:Record<string,string|number|undefined>){ const r=await httpClient.get<ListResponse<Actor>>("/accounts/acteurs/",{params}); return list(r.data) },
   async actor(id:number){ return (await httpClient.get<Actor>(`/accounts/acteurs/${id}/`)).data },
-  async createActor(data:Partial<Actor>){ return (await httpClient.post<Actor>("/accounts/acteurs/",data)).data },
-  async updateActor(id:number,data:Partial<Actor>){ return (await httpClient.patch<Actor>(`/accounts/acteurs/${id}/`,data)).data },
+  async createActor(data:Partial<Actor>|FormData){ return (await httpClient.post<Actor>("/accounts/acteurs/",data)).data },
+  async updateActor(id:number,data:Partial<Actor>|FormData){ return (await httpClient.patch<Actor>(`/accounts/acteurs/${id}/`,data)).data },
   async disableActor(id:number){ return (await httpClient.post(`/accounts/acteurs/${id}/desactiver/`)).data },
   async enableActor(id:number){ return (await httpClient.post(`/accounts/acteurs/${id}/reactiver/`)).data },
   async profile(){ return (await httpClient.get<Actor>("/accounts/acteurs/me/")).data },
@@ -14,6 +14,7 @@ export const accountsApi = {
   async changePassword(data:{ancien_mot_de_passe:string;nouveau_mot_de_passe:string;confirmation_mot_de_passe:string}){ return (await httpClient.post("/accounts/acteurs/changer_mot_de_passe/",data)).data },
 
   async roles(params?:Record<string,string|number|undefined>){ const r=await httpClient.get<ListResponse<Role>>("/accounts/roles/",{params}); return list(r.data) },
+  async assignableRoles(assignmentId:number){ const r=await httpClient.get<ListResponse<Role>>("/accounts/roles/attribuables/",{params:{affectation_acteur_id:assignmentId}}); return list(r.data) },
   async role(id:number){ return (await httpClient.get<Role>(`/accounts/roles/${id}/`)).data },
   async createRole(data:Partial<Role>){ return (await httpClient.post<Role>("/accounts/roles/",data)).data },
   async updateRole(id:number,data:Partial<Role>){ return (await httpClient.patch<Role>(`/accounts/roles/${id}/`,data)).data },

@@ -1,6 +1,7 @@
 export type Actor = {
   id: number; username: string; first_name: string; last_name: string; nom_complet: string;
-  email: string; telephone: string | null; titre: string; organisation: string; statut: string
+  email: string; telephone: string | null; titre: string; organisation: string;
+  signature_image: string | null; cachet_image: string | null; statut: string
 }
 export type Role = { id:number; code:string; libelle:string; description:string; niveau:number; perimetre_autorise:string; est_systeme:boolean; est_modifiable:boolean; statut:string }
 export type Permission = { id:number; code:string; libelle:string; module:string; description:string; est_systeme:boolean; statut:string }

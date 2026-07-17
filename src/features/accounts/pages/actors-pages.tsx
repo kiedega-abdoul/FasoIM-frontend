@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { accountsApi } from "../api"
-import type { Actor } from "../types"
+import type { Actor, ActorAssignment } from "../types"
 import { ACCOUNT_PERMISSIONS as P } from "../permissions"
 import { EmptyState, ErrorBox, Loading, PageHeader, PermissionGuard, StatusBadge } from "../components"
 import { getApiErrorMessage } from "@/api/api-error"
@@ -20,6 +20,8 @@ type ActorFormState = {
   telephone: string
   titre: string
   organisation: string
+  signature_image: File | null
+  cachet_image: File | null
 }
 
 const EMPTY_ACTOR_FORM: ActorFormState = {
@@ -29,6 +31,8 @@ const EMPTY_ACTOR_FORM: ActorFormState = {
   telephone: "",
   titre: "",
   organisation: "",
+  signature_image: null,
+  cachet_image: null,
 }
 
 export function ActorsListPage(){
@@ -119,6 +123,7 @@ export function ActorFormPage({edit=false}:{edit?:boolean}){
   const {acteurId}=useParams()
   const nav=useNavigate()
   const [f,setF]=useState<ActorFormState>(EMPTY_ACTOR_FORM)
+  const [existingImages,setExistingImages]=useState({signature_image:null as string|null, cachet_image:null as string|null})
   const [e,setE]=useState('')
   const [loading,setLoading]=useState(edit)
   const [submitting,setSubmitting]=useState(false)
@@ -130,17 +135,35 @@ export function ActorFormPage({edit=false}:{edit?:boolean}){
     }
 
     accountsApi.actor(+acteurId)
-      .then(a=>setF({
-        first_name:a.first_name||'',
-        last_name:a.last_name||'',
-        email:a.email||'',
-        telephone:a.telephone||'',
-        titre:a.titre||'',
-        organisation:a.organisation||'',
-}))
+      .then(a=>{
+        setF({
+          first_name:a.first_name||'',
+          last_name:a.last_name||'',
+          email:a.email||'',
+          telephone:a.telephone||'',
+          titre:a.titre||'',
+          organisation:a.organisation||'',
+          signature_image:null,
+          cachet_image:null,
+        })
+        setExistingImages({signature_image:a.signature_image, cachet_image:a.cachet_image})
+      })
       .catch(x=>setE(getApiErrorMessage(x)))
       .finally(()=>setLoading(false))
   },[edit,acteurId])
+
+  function payload(){
+    const data = new FormData()
+    data.append("first_name", f.first_name)
+    data.append("last_name", f.last_name)
+    data.append("email", f.email)
+    data.append("telephone", f.telephone)
+    data.append("titre", f.titre)
+    data.append("organisation", f.organisation)
+    if(f.signature_image)data.append("signature_image", f.signature_image)
+    if(f.cachet_image)data.append("cachet_image", f.cachet_image)
+    return data
+  }
 
   async function submit(x:React.FormEvent){
     x.preventDefault()
@@ -149,8 +172,8 @@ export function ActorFormPage({edit=false}:{edit?:boolean}){
 
     try{
       const a=edit&&acteurId
-        ? await accountsApi.updateActor(+acteurId,f)
-        : await accountsApi.createActor(f)
+        ? await accountsApi.updateActor(+acteurId,payload())
+        : await accountsApi.createActor(payload())
 
       nav(`/app/acteurs/${a.id}`)
     }catch(y){
@@ -268,6 +291,41 @@ export function ActorFormPage({edit=false}:{edit?:boolean}){
             </div>
           </section>
 
+          <section className="border-t pt-8">
+            <div className="mb-5">
+              <h2 className="text-xl font-semibold">Documents de validation</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                À renseigner pour les acteurs qui signent ou valident des documents officiels.
+              </p>
+            </div>
+
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="signature_image">Signature</Label>
+                <Input
+                  id="signature_image"
+                  type="file"
+                  accept="image/*"
+                  className="h-12 rounded-xl px-4 text-base"
+                  onChange={z=>setF(v=>({...v,signature_image:z.target.files?.[0]??null}))}
+                />
+                {existingImages.signature_image&&<a className="text-sm font-medium text-primary underline-offset-4 hover:underline" href={existingImages.signature_image} target="_blank" rel="noreferrer">Voir la signature enregistrée</a>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="cachet_image">Cachet</Label>
+                <Input
+                  id="cachet_image"
+                  type="file"
+                  accept="image/*"
+                  className="h-12 rounded-xl px-4 text-base"
+                  onChange={z=>setF(v=>({...v,cachet_image:z.target.files?.[0]??null}))}
+                />
+                {existingImages.cachet_image&&<a className="text-sm font-medium text-primary underline-offset-4 hover:underline" href={existingImages.cachet_image} target="_blank" rel="noreferrer">Voir le cachet enregistré</a>}
+              </div>
+            </div>
+          </section>
+
           {e&&<ErrorBox message={e}/>}
 
           <div className="flex flex-col-reverse gap-3 border-t pt-6 sm:flex-row sm:justify-end">
@@ -298,4 +356,67 @@ export function ActorFormPage({edit=false}:{edit?:boolean}){
     </Card>
   </>
 }
-export function ActorDetailPage(){const {acteurId}=useParams();const [a,setA]=useState<Actor|null>(null);const [e,setE]=useState('');async function load(){if(!acteurId)return;try{setA(await accountsApi.actor(+acteurId))}catch(x){setE(getApiErrorMessage(x))}}useEffect(()=>{void load()},[acteurId]);async function action(type:'disable'|'enable'){if(!acteurId)return;try{if(type==='disable'){await accountsApi.disableActor(+acteurId)}else{await accountsApi.enableActor(+acteurId)}await load()}catch(x){setE(getApiErrorMessage(x))}}if(e)return <ErrorBox message={e}/>;if(!a)return <Loading/>;return <><PageHeader title={a.nom_complet||a.username} backTo="/app/acteurs"/><Card><CardContent className="grid gap-6 p-7 sm:grid-cols-2">{Object.entries({Identifiant:a.username,Email:a.email,Téléphone:a.telephone||'—',Titre:a.titre||'—',Organisation:a.organisation||'—',Statut:a.statut}).map(([k,v])=><div key={k}><p className="text-sm text-muted-foreground">{k}</p><p className="mt-1 font-semibold">{v}</p></div>)}</CardContent></Card><div className="mt-5 flex flex-wrap gap-3"><PermissionGuard permission={P.UPDATE_ACTOR}><Button render={<Link to={`/app/acteurs/${a.id}/modifier`}/>}>Modifier</Button></PermissionGuard>{a.statut==='actif'?<PermissionGuard permission={P.DISABLE_ACTOR}><Button variant="destructive" onClick={()=>action('disable')}>Désactiver</Button></PermissionGuard>:<PermissionGuard permission={P.ENABLE_ACTOR}><Button onClick={()=>action('enable')}>Réactiver</Button></PermissionGuard>}</div></>}
+export function ActorDetailPage(){
+  const {acteurId}=useParams()
+  const [a,setA]=useState<Actor|null>(null)
+  const [assignments,setAssignments]=useState<ActorAssignment[]>([])
+  const [e,setE]=useState('')
+
+  async function load(){
+    if(!acteurId)return
+    try{
+      const actorId=+acteurId
+      const [actorData,assignmentRows]=await Promise.all([
+        accountsApi.actor(actorId),
+        accountsApi.assignments({acteur_id:actorId}),
+      ])
+      setA(actorData)
+      setAssignments(assignmentRows)
+      setE('')
+    }catch(x){
+      setE(getApiErrorMessage(x))
+    }
+  }
+
+  useEffect(()=>{void load()},[acteurId])
+
+  async function action(type:'disable'|'enable'){
+    if(!acteurId)return
+    try{
+      if(type==='disable')await accountsApi.disableActor(+acteurId)
+      else await accountsApi.enableActor(+acteurId)
+      await load()
+    }catch(x){setE(getApiErrorMessage(x))}
+  }
+
+  if(e)return <ErrorBox message={e}/>
+  if(!a)return <Loading/>
+
+  return <>
+    <PageHeader title={a.nom_complet||a.username} backTo="/app/acteurs"/>
+
+    <Card>
+      <CardContent className="grid gap-6 p-7 sm:grid-cols-2">
+        {Object.entries({Identifiant:a.username,Email:a.email,Téléphone:a.telephone||'—',Fonction:a.titre||'—',Organisation:a.organisation||'—',Statut:a.statut}).map(([k,v])=><div key={k}><p className="text-sm text-muted-foreground">{k}</p><p className="mt-1 font-semibold">{v}</p></div>)}
+        <div><p className="text-sm text-muted-foreground">Signature</p>{a.signature_image?<a className="mt-1 inline-block font-semibold text-primary underline-offset-4 hover:underline" href={a.signature_image} target="_blank" rel="noreferrer">Voir la signature</a>:<p className="mt-1 font-semibold">—</p>}</div>
+        <div><p className="text-sm text-muted-foreground">Cachet</p>{a.cachet_image?<a className="mt-1 inline-block font-semibold text-primary underline-offset-4 hover:underline" href={a.cachet_image} target="_blank" rel="noreferrer">Voir le cachet</a>:<p className="mt-1 font-semibold">—</p>}</div>
+      </CardContent>
+    </Card>
+
+    <div className="mt-5 flex flex-wrap gap-3">
+      <PermissionGuard permission={P.UPDATE_ACTOR}><Button render={<Link to={`/app/acteurs/${a.id}/modifier`}/>}>Modifier les informations</Button></PermissionGuard>
+      {a.statut==='actif'?<PermissionGuard permission={P.DISABLE_ACTOR}><Button variant="destructive" onClick={()=>action('disable')}>Désactiver le compte</Button></PermissionGuard>:<PermissionGuard permission={P.ENABLE_ACTOR}><Button onClick={()=>action('enable')}>Réactiver le compte</Button></PermissionGuard>}
+      <PermissionGuard permission={P.ASSIGN_ACTOR}><Button render={<Link to={`/app/affectations/nouvelle`}/>} variant="outline">Ajouter une affectation</Button></PermissionGuard>
+    </div>
+
+    <section className="mt-8">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Affectations</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Contextes dans lesquels cette personne peut travailler.</p>
+        </div>
+      </div>
+      {assignments.length===0?<EmptyState message="Aucune affectation pour cette personne."/>:<Card className="overflow-hidden"><Table><TableHeader><TableRow><TableHead>Contexte</TableHead><TableHead>Session</TableHead><TableHead>Statut</TableHead><TableHead/></TableRow></TableHeader><TableBody>{assignments.map(row=><TableRow key={row.id}><TableCell><p className="font-semibold capitalize">{row.niveau_affectation}</p><p className="text-sm text-muted-foreground">{[row.region_nom||row.region_code,row.centre_nom].filter(Boolean).join(' · ')||'—'}</p></TableCell><TableCell>{row.session_nom||'Permanente'}</TableCell><TableCell><StatusBadge value={row.statut}/></TableCell><TableCell className="text-right"><PermissionGuard permission={P.VIEW_ACTOR_ASSIGNMENT}><Button render={<Link to={`/app/affectations/${row.id}`}/>} variant="outline" size="sm">Voir</Button></PermissionGuard></TableCell></TableRow>)}</TableBody></Table></Card>}
+    </section>
+  </>
+}
