@@ -1,6 +1,6 @@
 import { httpClient } from "@/api/http-client"
 import { currentScopeParams } from "@/features/affectations/scope"
-import type { Bed, BedPayload, CenterOrganizationPayload, CenterOrganizationRule, CenterOrganizationSummary, Dormitory, DormitoryPayload, ListResponse, OrganizationTaskResult } from "./types"
+import type { Bed, BedAssignment, BedPayload, CenterOrganizationPayload, CenterOrganizationRule, CenterOrganizationSummary, Dormitory, DormitoryPayload, Group, GroupAssignment, ListResponse, OrganizationProgress, OrganizationTaskLaunch, OrganizationTaskResult, Section } from "./types"
 
 const list = <T>(data: ListResponse<T>) => Array.isArray(data) ? data : data.results
 const withScope = (params?: Record<string, string | number | undefined>) => ({
@@ -9,6 +9,37 @@ const withScope = (params?: Record<string, string | number | undefined>) => ({
 })
 
 export const organisationApi = {
+
+  async sections(params?: Record<string, string | number | undefined>) {
+    return list((await httpClient.get<ListResponse<Section>>("/organisation/sections/", { params: withScope(params) })).data)
+  },
+  async groups(params?: Record<string, string | number | undefined>) {
+    return list((await httpClient.get<ListResponse<Group>>("/organisation/groupes/", { params: withScope(params) })).data)
+  },
+  async groupAssignments(params?: Record<string, string | number | undefined>) {
+    return list((await httpClient.get<ListResponse<GroupAssignment>>("/organisation/affectations-groupes/", { params: withScope(params) })).data)
+  },
+  async proposeGroupAssignments(sessionId: number, centerId: number) {
+    return (await httpClient.post<OrganizationTaskLaunch>("/organisation/affectations-groupes/proposer-lot/", { session_id: sessionId, centre_id: centerId }, { params: withScope() })).data
+  },
+  async validateGroupAssignments(ids: number[]) {
+    return (await httpClient.post<OrganizationTaskLaunch>("/organisation/affectations-groupes/valider-lot/", { ids }, { params: withScope() })).data
+  },
+  async groupAssignmentProgress(taskId: string) {
+    return (await httpClient.get<OrganizationProgress>(`/organisation/affectations-groupes/progression/${taskId}/`, { params: withScope() })).data
+  },
+  async bedAssignments(params?: Record<string, string | number | undefined>) {
+    return list((await httpClient.get<ListResponse<BedAssignment>>("/organisation/attributions-lits/", { params: withScope(params) })).data)
+  },
+  async proposeBedAssignments(sessionId: number, centerId: number) {
+    return (await httpClient.post<OrganizationTaskLaunch>("/organisation/attributions-lits/proposer-lot/", { session_id: sessionId, centre_id: centerId }, { params: withScope() })).data
+  },
+  async validateBedAssignments(ids: number[]) {
+    return (await httpClient.post<OrganizationTaskLaunch>("/organisation/attributions-lits/valider-lot/", { ids }, { params: withScope() })).data
+  },
+  async bedAssignmentProgress(taskId: string) {
+    return (await httpClient.get<OrganizationProgress>(`/organisation/attributions-lits/progression/${taskId}/`, { params: withScope() })).data
+  },
   async dormitories(params?: Record<string, string | number | undefined>) {
     return list((await httpClient.get<ListResponse<Dormitory>>("/organisation/dortoirs/", { params: withScope(params) })).data)
   },
@@ -65,6 +96,9 @@ export const organisationApi = {
   },
   async centerRuleSummary(id: number) {
     return (await httpClient.get<CenterOrganizationSummary>(`/organisation/regles-centres/${id}/synthese/`, { params: withScope() })).data
+  },
+  async centerRuleProgress(taskId: string) {
+    return (await httpClient.get<OrganizationProgress>(`/organisation/regles-centres/progression/${taskId}/`, { params: withScope() })).data
   },
   async generateCenterStructures(id: number) {
     return (await httpClient.post(`/organisation/regles-centres/${id}/generer-structures/`, {}, { params: withScope() })).data

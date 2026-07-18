@@ -50,7 +50,7 @@ const modules = [
   },
   {
     label: "Régions",
-    description: "Administrer le référentiel national des régions d’immersion.",
+    description: "Gérer la liste nationale des régions d’immersion.",
     href: "/app/regions",
     permissions: AFFECTATION_GROUPS.REGIONS,
     icon: MapPinned,
@@ -81,7 +81,7 @@ const modules = [
 const plannedModules = [
   { label: "Demandes d’alimentation", description: "Validation et consolidation des demandes des centres.", icon: UtensilsCrossed },
   { label: "Propositions de clôture", description: "Contrôle des blocages et confirmation administrative.", icon: ClipboardList },
-  { label: "Supervision et audit", description: "Journaux, statistiques, sécurité et suivi technique.", icon: ShieldCheck },
+  { label: "Suivi et contrôle", description: "Suivi des opérations, statistiques, sécurité et contrôles.", icon: ShieldCheck },
 ] as const
 
 type AdministrationStats = {
@@ -140,7 +140,7 @@ export function AdministrationDashboard() {
         <Badge variant="secondary" className="mb-3">Administration</Badge>
         <h1 className="text-3xl font-bold tracking-tight">Administration de la plateforme</h1>
         <p className="mt-2 max-w-3xl text-base leading-6 text-primary-foreground/85">
-          Supervisez les sessions, les acteurs, les affectations et les référentiels nationaux de FasoIM.
+          Supervisez les sessions, les acteurs, les affectations, les régions et les centres de FasoIM.
         </p>
       </section>
 

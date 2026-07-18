@@ -85,3 +85,20 @@ export type KitTask = {
   statut: string
   message: string
 }
+
+export type KitTaskProgress = {
+  task_id: string
+  operation?: string
+  statut: string
+  progression: number
+  message?: string
+  total_immerges: number
+  immerges_traites: number
+  remises_creees: number
+  remises_validees: number
+  remises_annulees: number
+  bloques_medicaux: number
+  sans_article: number
+  erreurs: number
+  resultat?: Record<string, unknown> | null
+}

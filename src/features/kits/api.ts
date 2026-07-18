@@ -1,6 +1,6 @@
 import { httpClient } from "@/api/http-client"
 import { currentScopeParams } from "@/features/affectations/scope"
-import type { KitArticle, KitArticlePayload, KitRemise, KitStatsRow, KitTask, ListResponse } from "./types"
+import type { KitArticle, KitArticlePayload, KitRemise, KitStatsRow, KitTask, KitTaskProgress, ListResponse } from "./types"
 
 const list = <T>(data: ListResponse<T>) => Array.isArray(data) ? data : data.results
 const withScope = (params?: Record<string, string | number | boolean | undefined | null>) => ({
@@ -32,6 +32,12 @@ export const kitsApi = {
   },
   async prepareMass(data: { session_id: number; centre_id: number; article_kit_ids?: number[] }) {
     return (await httpClient.post<KitTask>("/kits/operations/preparer-masse/", data, { params: withScope() })).data
+  },
+  async validateMass(data: { session_id: number; centre_id: number; affectation_centre_ids?: number[]; article_kit_ids?: number[] }) {
+    return (await httpClient.post<KitTask>("/kits/operations/valider-masse/", data, { params: withScope() })).data
+  },
+  async operationProgress(taskId: string) {
+    return (await httpClient.get<KitTaskProgress>(`/kits/operations/${taskId}/`, { params: withScope() })).data
   },
   async recordRemise(data: { affectation_centre_id: number; article_kit_id: number; quantite_remise: number; observations?: string }) {
     return (await httpClient.post<KitRemise>("/kits/remises/", data, { params: withScope() })).data

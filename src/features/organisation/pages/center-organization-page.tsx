@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useState } from "react"
+import { Building2, CalendarRange, LockKeyhole } from "lucide-react"
 
 import { getApiErrorMessage } from "@/api/api-error"
 import { Button } from "@/components/ui/button"
@@ -64,7 +65,8 @@ function formFromRule(rule: CenterOrganizationRule): CenterOrganizationPayload {
 }
 
 export function CenterOrganizationPage() {
-  const permissions = useAuthStore((state) => state.context?.affectation_courante?.permissions ?? [])
+  const currentAssignment = useAuthStore((state) => state.context?.affectation_courante)
+  const permissions = currentAssignment?.permissions ?? []
   const [rule, setRule] = useState<CenterOrganizationRule | null>(null)
   const [summary, setSummary] = useState<CenterOrganizationSummary | null>(null)
   const [form, setForm] = useState<CenterOrganizationPayload>(emptyForm)
@@ -76,7 +78,11 @@ export function CenterOrganizationPage() {
   const scope = currentScopeParams() as Record<string, string | number | undefined>
   const sessionId = Number(scope.session_id || 0)
   const centerId = Number(scope.centre_id || 0)
-  const canEdit = rule ? permissions.includes(P.UPDATE_CENTER_RULES) : permissions.includes(P.CONFIGURE_CENTER_RULES)
+  const hasEditPermission = rule
+    ? permissions.includes(P.UPDATE_CENTER_RULES)
+    : permissions.includes(P.CONFIGURE_CENTER_RULES)
+  const isLocked = rule?.statut === "PRETE_PUBLICATION" || rule?.statut === "ARCHIVEE"
+  const canEdit = hasEditPermission && !isLocked
 
   async function load() {
     setLoading(true)
@@ -155,20 +161,59 @@ export function CenterOrganizationPage() {
   const openedPlaces = rule?.capacite_ouverte ?? form.capacite_ouverte
   const occupiedPlaces = summary?.total_affectations_centre ?? 0
   const remainingPlaces = Math.max(0, openedPlaces - occupiedPlaces)
+  const centerName = rule?.centre?.nom || "votre centre"
+  const sessionName = rule?.session?.nom || currentAssignment?.session?.nom || "la session courante"
+  const saveLabel = !rule
+    ? "Enregistrer l’organisation"
+    : rule.statut === "VALIDEE"
+      ? "Enregistrer et rouvrir l’organisation"
+      : "Enregistrer les modifications"
 
   return <>
-    <PageHeader title="Organisation du centre" description="Capacité d’accueil, sections, groupes et consignes du centre." backTo="/app" />
+    <PageHeader
+      title={`Organisation du centre ${centerName} pour ${sessionName}`}
+      description="Définissez les capacités, les règles de répartition et les informations communiquées aux immergés avant leur venue."
+      backTo="/app"
+    />
 
-    {(!sessionId || !centerId) && <EmptyState message="Cette page s’utilise avec une affectation de centre." />}
+    {(!sessionId || !centerId) && <EmptyState message="Cette opération nécessite une affectation active à un centre." />}
     {error && <div className="mb-5"><ErrorBox message={error} /></div>}
     {info && <div className="mb-5 rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm text-primary">{info}</div>}
 
     {sessionId && centerId ? <form onSubmit={submit} className="space-y-6">
-      {rule && <Card><CardContent className="grid gap-4 p-6 sm:grid-cols-3">
-        <div><p className="text-sm text-muted-foreground">Centre</p><p className="mt-1 font-semibold">{rule.centre?.nom || rule.centre?.code}</p></div>
-        <div><p className="text-sm text-muted-foreground">Session</p><p className="mt-1 font-semibold">{rule.session?.nom || rule.session?.code}</p></div>
-        <div><p className="text-sm text-muted-foreground">Statut</p><div className="mt-1"><StatusBadge value={rule.statut.toLowerCase()} /></div></div>
-      </CardContent></Card>}
+      {rule && <Card className="overflow-hidden border-primary/15 bg-gradient-to-br from-card to-primary/5 shadow-sm">
+        <CardContent className="grid gap-5 p-6 md:grid-cols-[1fr_1fr_auto] md:items-center">
+          <div className="flex items-center gap-4">
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <Building2 className="size-6" />
+            </span>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Centre concerné</p>
+              <p className="mt-1 text-lg font-semibold">{rule.centre?.nom || "Centre non renseigné"}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <CalendarRange className="size-6" />
+            </span>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Session</p>
+              <p className="mt-1 text-lg font-semibold">{rule.session?.nom || rule.session?.code}</p>
+            </div>
+          </div>
+          <div className="rounded-2xl border bg-background/80 px-5 py-4 md:min-w-52">
+            <p className="text-sm font-medium text-muted-foreground">État de l’organisation</p>
+            <div className="mt-2 flex items-center gap-2">
+              {isLocked && <LockKeyhole className="size-4 text-muted-foreground" />}
+              <StatusBadge value={rule.statut.toLowerCase()} />
+            </div>
+          </div>
+        </CardContent>
+      </Card>}
+
+      {isLocked && <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm">
+        Cette organisation est verrouillée dans son état actuel. Elle doit être rouverte côté métier avant toute modification.
+      </div>}
 
       {summary && <Card><CardContent className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-4">
         <div><p className="text-sm text-muted-foreground">Places ouvertes</p><p className="mt-1 text-2xl font-semibold">{openedPlaces}</p></div>
@@ -210,7 +255,7 @@ export function CenterOrganizationPage() {
         {rule && summary?.actions.peut_generer_structures && <PermissionGuard permission={P.GENERATE_STRUCTURES}><Button type="button" variant="outline" disabled={submitting} onClick={() => void runAction(() => organisationApi.generateCenterStructures(rule.id), "Création des sections et groupes lancée.")}>Créer les sections et groupes</Button></PermissionGuard>}
         {rule && summary?.actions.peut_valider_organisation && <PermissionGuard permission={P.VALIDATE_CENTER_ORGANIZATION}><Button type="button" variant="secondary" disabled={submitting} onClick={() => void runAction(() => organisationApi.validateCenterOrganization(rule.id), "Organisation du centre validée.")}>Valider l’organisation</Button></PermissionGuard>}
         {rule && summary?.actions.peut_marquer_pret && <PermissionGuard permission={P.MARK_CENTER_READY}><Button type="button" variant="secondary" disabled={submitting} onClick={() => void runAction(() => organisationApi.markCenterReady(rule.id), "Centre marqué prêt pour publication.")}>Marquer prêt</Button></PermissionGuard>}
-        {canEdit && <Button type="submit" disabled={submitting}>{submitting ? "Enregistrement..." : "Enregistrer"}</Button>}
+        {canEdit && <Button type="submit" disabled={submitting}>{submitting ? "Enregistrement..." : saveLabel}</Button>}
       </div>
     </form> : null}
   </>

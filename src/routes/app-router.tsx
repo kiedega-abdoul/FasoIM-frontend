@@ -37,14 +37,18 @@ import { AFFECTATION_GROUPS } from "@/features/affectations/groups"
 import { AFFECTATION_PERMISSIONS as AFP } from "@/features/affectations/permissions"
 import { CenterFormPage, CentersPage, RegionFormPage, RegionsPage } from "@/features/affectations/pages/referentials-pages"
 import { RegionalAssignmentsPage } from "@/features/affectations/pages/regional-assignments-page"
+import { CenterAssignmentsPage } from "@/features/affectations/pages/center-assignments-page"
 import { MyCenterPage } from "@/features/affectations/pages/my-center-page"
 import { KITS_GROUPS } from "@/features/kits/groups"
 import { KITS_PERMISSIONS as KP } from "@/features/kits/permissions"
 import { KitArticleFormPage, KitsPage } from "@/features/kits/pages/kits-pages"
+import { KitDistributionPage } from "@/features/kits/pages/kit-distribution-page"
 import { ORGANISATION_GROUPS } from "@/features/organisation/groups"
 import { ORGANISATION_PERMISSIONS as OP } from "@/features/organisation/permissions"
 import { BedFormPage, BedsPage, DormitoriesPage, DormitoryDetailPage, DormitoryFormPage } from "@/features/organisation/pages/hebergement-pages"
 import { CenterOrganizationPage } from "@/features/organisation/pages/center-organization-page"
+import { InternalDistributionPage } from "@/features/organisation/pages/internal-distribution-page"
+import { CenterFinalizationPage } from "@/features/organisation/pages/center-finalization-page"
 import { ProfilePage, EditProfilePage, ChangePasswordPage } from "@/features/accounts/pages/profile-pages"
 import { ActorsListPage, ActorFormPage, ActorDetailPage } from "@/features/accounts/pages/actors-pages"
 import { AssignmentsListPage, AssignmentCreatePage, AssignmentDetailPage, RolesListPage, RoleFormPage, RoleDetailPage, RolePermissionsPage, PermissionsListPage, PermissionDetailPage } from "@/features/accounts/pages/access-pages"
@@ -53,6 +57,9 @@ import { VolunteerRequestDetailPage, VolunteerRequestsListPage } from "@/feature
 import { VOLUNTEER_REQUEST_ACCESS, VOLUNTEER_REQUEST_PERMISSIONS as VRP } from "@/features/volunteers/requests-permissions"
 import { ACTIVITES_ACCESS } from "@/features/activites/permissions"
 import { AdministrationActivitiesPage } from "@/features/activites/pages/administration-activities-page"
+import { ImmergesListPage } from "@/features/immerges/pages/immerges-list-page"
+import { CenterImmergesPage } from "@/features/immerges/pages/center-immerges-page"
+import { IMMERGE_PERMISSIONS } from "@/features/immerges/permissions"
 
 
 export function AppRouter() {
@@ -111,6 +118,8 @@ export function AppRouter() {
           <Route element={<PermissionRoute permission={AFP.CREATE_CENTER} />}><Route path="centres/nouveau" element={<CenterFormPage />} /></Route>
           <Route element={<PermissionRoute permission={AFP.UPDATE_CENTER} />}><Route path="centres/:id/modifier" element={<CenterFormPage edit />} /></Route>
           <Route element={<PermissionRoute permissions={[...AFFECTATION_GROUPS.REGIONAL_ASSIGNMENTS]} />}><Route path="affectations-regionales" element={<RegionalAssignmentsPage />} /></Route>
+          <Route element={<PermissionRoute permissions={[...AFFECTATION_GROUPS.CENTER_ASSIGNMENTS]} />}><Route path="affectations-centres" element={<CenterAssignmentsPage />} /></Route>
+          <Route element={<PermissionRoute permission={IMMERGE_PERMISSIONS.LIST} />}><Route path="immerges" element={<ImmergesListPage />} /><Route path="immerges-centre" element={<CenterImmergesPage />} /></Route>
 
           <Route element={<PermissionRoute permissions={[...ORGANISATION_GROUPS.DORMITORIES]} />}><Route path="dortoirs" element={<DormitoriesPage />} /></Route>
           <Route element={<PermissionRoute permission={OP.VIEW_HOSTING} />}><Route path="dortoirs/:id" element={<DormitoryDetailPage />} /></Route>
@@ -120,6 +129,8 @@ export function AppRouter() {
           <Route element={<PermissionRoute permission={OP.CREATE_BED} />}><Route path="lits/nouveau" element={<BedFormPage />} /></Route>
           <Route element={<PermissionRoute permission={OP.UPDATE_BED} />}><Route path="lits/:id/modifier" element={<BedFormPage edit />} /></Route>
           <Route element={<PermissionRoute permissions={[...ORGANISATION_GROUPS.CENTER_ORGANIZATION]} />}><Route path="organisation-centre" element={<CenterOrganizationPage />} /></Route>
+          <Route element={<PermissionRoute permissions={[...ORGANISATION_GROUPS.INTERNAL_DISTRIBUTION]} />}><Route path="repartition-interne" element={<InternalDistributionPage />} /></Route>
+          <Route element={<PermissionRoute permission={OP.VIEW_CENTER_RULES} />}><Route path="finalisation-centre" element={<CenterFinalizationPage />} /></Route>
 
           <Route element={<PermissionRoute permissions={[...ACTIVITES_ACCESS]} />}><Route path="activites" element={<AdministrationActivitiesPage />} /></Route>
 
@@ -127,6 +138,7 @@ export function AppRouter() {
           <Route element={<PermissionRoute permission={KP.CREATE_BRING_ARTICLE} />}><Route path="kits/articles/nouveau-a-apporter" element={<KitArticleFormPage type="A_APPORTER" />} /></Route>
           <Route element={<PermissionRoute permission={KP.CREATE_GIVE_ARTICLE} />}><Route path="kits/articles/nouveau-a-remettre" element={<KitArticleFormPage type="A_REMETTRE" />} /></Route>
           <Route element={<PermissionRoute permission={KP.UPDATE_ARTICLE} />}><Route path="kits/articles/:id/modifier" element={<KitArticleFormPage edit />} /></Route>
+          <Route element={<PermissionRoute permission={KP.VALIDATE_MASS} />}><Route path="kits/articles/:id/distribution" element={<KitDistributionPage />} /></Route>
 
           <Route element={<PermissionRoute permissions={[...ACCOUNT_GROUPS.ACTORS]} />}><Route path="acteurs" element={<ActorsListPage />} /></Route>
           <Route element={<PermissionRoute permission={AP.CREATE_ACTOR} />}><Route path="acteurs/nouveau" element={<ActorFormPage />} /></Route>

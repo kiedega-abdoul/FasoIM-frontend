@@ -42,6 +42,13 @@ const baseModules = [
     icon: UserCheck,
   },
   {
+    label: "Immergés de la session",
+    description: "Consulter les immergés centralisés, leur origine, leur statut et leur Code FasoIM.",
+    href: "/app/immerges",
+    permissions: ["lister_immerges"],
+    icon: Users,
+  },
+  {
     label: "Affectations régionales",
     description: "Proposer, contrôler et valider l’affectation des immergés dans les régions.",
     href: "/app/affectations-regionales",
@@ -49,8 +56,8 @@ const baseModules = [
     icon: Route,
   },
   {
-    label: "Sessions d’immersion",
-    description: "Consulter les sessions et suivre leur état d’avancement au niveau national.",
+    label: "Détails de la session",
+    description: "Consulter les informations, les services prévus et les centres d’accueil de la session.",
     href: "/app/sessions",
     permissions: SESSION_GROUPS.MANAGEMENT,
     icon: CalendarRange,
@@ -200,10 +207,14 @@ export function DgasDashboard() {
 
         {visibleModules.length ? (
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-            {visibleModules.map(({ label, description, href, icon: Icon }) => (
-              <Link
+            {visibleModules.map(({ label, description, href, icon: Icon }) => {
+              const targetHref = label === "Détails de la session" && sessionId
+                ? `/app/sessions/${sessionId}`
+                : href
+              return (
+                <Link
                 key={href}
-                to={href}
+                to={targetHref}
                 className="group rounded-2xl border bg-card p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
               >
                 <div className="flex items-start justify-between gap-4">
@@ -214,8 +225,9 @@ export function DgasDashboard() {
                 </div>
                 <h3 className="mt-4 text-base font-semibold">{label}</h3>
                 <p className="mt-1 text-sm leading-5 text-muted-foreground">{description}</p>
-              </Link>
-            ))}
+                </Link>
+              )
+            })}
           </div>
         ) : (
           <Card className="mt-4">

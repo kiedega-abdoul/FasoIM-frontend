@@ -20,6 +20,7 @@ import { activitesApi } from "@/features/activites/api"
 import { accountsApi } from "@/features/accounts/api"
 import { ACTIVITES_PERMISSIONS as P } from "@/features/activites/permissions"
 import type { ModuleActivite, Seance } from "@/features/activites/types"
+import type { Center } from "@/features/affectations/types"
 import { affectationsApi } from "@/features/affectations/api"
 import { sessionsApi } from "@/features/sessions/api"
 import type { ImmersionSession } from "@/features/sessions/types"
@@ -70,9 +71,11 @@ export function AdministrationActivitiesPage() {
   const navigate = useNavigate()
   const assignment = useAuthStore((state) => state.context?.affectation_courante)
   const permissions = assignment?.permissions ?? []
-  const [view, setView] = useState<View>("catalogue")
+  const isCenterManager = assignment?.roles.some((role) => role.code === "RESPONSABLE_CENTRE") ?? false
+  const [view, setView] = useState<View>(isCenterManager ? "planning" : "catalogue")
   const [sessions, setSessions] = useState<ImmersionSession[]>([])
   const [centres, setCentres] = useState<CentreOption[]>([])
+  const [currentCenter, setCurrentCenter] = useState<Center | null>(null)
   const [formateurs, setFormateurs] = useState<FormateurOption[]>([])
   const [activities, setActivities] = useState<ModuleActivite[]>([])
   const [seances, setSeances] = useState<Seance[]>([])
@@ -91,6 +94,8 @@ export function AdministrationActivitiesPage() {
   const [message, setMessage] = useState("")
 
   const selectedSession = sessions.find((item) => item.id === sessionId) ?? null
+  const sessionDateStart = selectedSession?.date_debut ?? assignment?.session?.date_debut
+  const sessionDateEnd = selectedSession?.date_fin ?? assignment?.session?.date_fin
   const allowedCentreIds = useMemo(() => new Set((selectedSession?.parametres?.centres_accueil ?? []).map((item) => item.centre_id)), [selectedSession])
   const sessionCentres = useMemo(() => allowedCentreIds.size ? centres.filter((item) => allowedCentreIds.has(item.id)) : centres, [allowedCentreIds, centres])
   const filteredActivities = useMemo(() => activities.filter((item) => `${item.titre} ${item.code} ${item.categorie_libelle ?? item.categorie}`.toLowerCase().includes(search.toLowerCase())), [activities, search])
@@ -99,6 +104,21 @@ export function AdministrationActivitiesPage() {
   async function loadBase() {
     setLoading(true); setMessage("")
     try {
+      if (isCenterManager) {
+        const [activityRows, centerRow] = await Promise.all([
+          activitesApi.modules({ page_size: 1000 }),
+          assignment?.centre_id ? affectationsApi.center(assignment.centre_id) : Promise.resolve(null),
+        ])
+        setActivities(activityRows)
+        setCurrentCenter(centerRow)
+        setSessions([])
+        setCentres([])
+        setSessionId(assignment?.session?.id ?? null)
+        setCentreId(assignment?.centre_id ?? null)
+        setView("planning")
+        return
+      }
+
       const [activityRows, sessionRows, centreRows] = await Promise.all([
         activitesApi.modules({ page_size: 1000 }), sessionsApi.sessions({ page_size: 1000 }), affectationsApi.centers({ page_size: 1000 }),
       ])
@@ -147,9 +167,20 @@ export function AdministrationActivitiesPage() {
     catch (error) { setMessage(getApiErrorMessage(error) || "Impossible de charger le planning.") }
   }
 
-  useEffect(() => { void loadBase() }, [assignment?.id])
-  useEffect(() => { void loadPlanning(sessionId); setCentreId(assignment?.centre_id ?? null) }, [sessionId])
-  useEffect(() => { void loadFormateurs(sessionId, centreId) }, [sessionId, centreId])
+  useEffect(() => {
+    queueMicrotask(() => { void loadBase() })
+  }, [assignment?.id, isCenterManager])
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setCentreId(assignment?.centre_id ?? null)
+      void loadPlanning(sessionId)
+    })
+  }, [assignment?.centre_id, sessionId])
+
+  useEffect(() => {
+    queueMicrotask(() => { void loadFormateurs(sessionId, centreId) })
+  }, [sessionId, centreId])
 
   async function createActivity(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const form = event.currentTarget; const data = new FormData(form)
@@ -189,26 +220,26 @@ export function AdministrationActivitiesPage() {
     <div className="space-y-6 pb-10">
       <Button variant="ghost" className="h-11 px-0 text-base" onClick={() => navigate(-1)}><ArrowLeft className="mr-2 size-5" />Retour</Button>
       <section className="rounded-3xl bg-primary px-6 py-7 text-primary-foreground shadow-sm">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em]">Administration</p>
-        <h1 className="mt-2 text-3xl font-bold">Activités et planning des séances</h1>
-        <p className="mt-2 max-w-4xl text-base text-primary-foreground/85">Les activités forment un catalogue national indépendant. Les séances sont ensuite programmées pour une session et un centre. Une évaluation est programmée directement comme une séance de type évaluation.</p>
+        <p className="text-sm font-semibold uppercase tracking-[0.2em]">{isCenterManager ? "Responsable de centre" : "Administration"}</p>
+        <h1 className="mt-2 text-3xl font-bold">{isCenterManager ? `Séances de ${currentCenter?.nom ?? "votre centre"}` : "Activités et planning des séances"}</h1>
+        <p className="mt-2 max-w-4xl text-base text-primary-foreground/85">{isCenterManager ? "Planifiez les séances de votre centre à partir des activités définies par l’administration, ou créez une séance autonome sans modifier le catalogue national." : "Les activités forment un catalogue national indépendant. Les séances sont ensuite programmées pour une session et un centre. Une évaluation est programmée directement comme une séance de type évaluation."}</p>
       </section>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      {!isCenterManager && <div className="grid gap-4 md:grid-cols-2">
         <button onClick={() => setView("catalogue")} className={`rounded-2xl border p-5 text-left ${view === "catalogue" ? "border-primary bg-primary/5 ring-2 ring-primary/20" : "bg-background"}`}>
           <BookOpenCheck className="size-7 text-primary" /><h2 className="mt-3 text-xl font-bold">Catalogue national des activités</h2><p className="mt-1 text-sm text-muted-foreground">Créer et gérer les activités réutilisables, sans session ni centre.</p>
         </button>
         <button onClick={() => setView("planning")} className={`rounded-2xl border p-5 text-left ${view === "planning" ? "border-primary bg-primary/5 ring-2 ring-primary/20" : "bg-background"}`}>
           <CalendarDays className="size-7 text-primary" /><h2 className="mt-3 text-xl font-bold">Planning des séances</h2><p className="mt-1 text-sm text-muted-foreground">Choisir une session, un centre et programmer une activité, une évaluation ou un autre événement.</p>
         </button>
-      </div>
+      </div>}
 
       {message && <p className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-destructive">{message}</p>}
 
-      {view === "catalogue" ? (
+      {!isCenterManager && view === "catalogue" ? (
         <Card><CardContent className="space-y-5 p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div><h2 className="text-2xl font-bold">Activités</h2><p className="text-muted-foreground">Le code est généré automatiquement par le système.</p></div>
+            <div><h2 className="text-2xl font-bold">Activités</h2><p className="text-muted-foreground">Une référence est attribuée automatiquement.</p></div>
             {permissions.includes(P.CREATE_ACTIVITY) && <Button size="lg" className="h-12 px-6 text-base" onClick={() => setShowCreateActivity(!showCreateActivity)}><Plus className="mr-2 size-5" />Nouvelle activité</Button>}
           </div>
           {showCreateActivity && <form onSubmit={createActivity} className="space-y-6 rounded-2xl border bg-muted/20 p-6">
@@ -222,15 +253,21 @@ export function AdministrationActivitiesPage() {
         </CardContent></Card>
       ) : (
         <div className="space-y-6">
-          <Card><CardContent className="space-y-5 p-6"><div><h2 className="text-2xl font-bold">1. Choisir la session</h2><p className="text-muted-foreground">Nom principal, code affiché comme référence secondaire.</p></div><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{sessions.map((item) => <ChoiceCard key={item.id} selected={sessionId === item.id} title={item.nom} subtitle={`${item.code} · ${item.type_session} · ${item.public_cible}`} onClick={() => setSessionId(item.id)} />)}</div></CardContent></Card>
-          {sessionId && <Card><CardContent className="space-y-5 p-6"><div><h2 className="text-2xl font-bold">2. Choisir le centre</h2><p className="text-muted-foreground">Seuls les centres configurés pour la session sont proposés.</p></div><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">{sessionCentres.map((item) => <ChoiceCard key={item.id} selected={centreId === item.id} title={item.nom} subtitle={item.code} onClick={() => setCentreId(item.id)} />)}</div></CardContent></Card>}
+          {isCenterManager ? <Card><CardContent className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div><p className="text-sm text-muted-foreground">Session</p><p className="mt-1 text-lg font-semibold">{assignment?.session?.nom ?? "Non définie"}</p></div>
+            <div><p className="text-sm text-muted-foreground">Centre</p><p className="mt-1 text-lg font-semibold">{currentCenter?.nom ?? "Non défini"}</p></div>
+            <div><p className="text-sm text-muted-foreground">Période</p><p className="mt-1 text-lg font-semibold">{assignment?.session ? `${assignment.session.date_debut} au ${assignment.session.date_fin}` : "Non définie"}</p></div>
+          </CardContent></Card> : <>
+            <Card><CardContent className="space-y-5 p-6"><div><h2 className="text-2xl font-bold">1. Choisir la session</h2><p className="text-muted-foreground">Nom principal, code affiché comme référence secondaire.</p></div><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{sessions.map((item) => <ChoiceCard key={item.id} selected={sessionId === item.id} title={item.nom} subtitle={`${item.code} · ${item.type_session} · ${item.public_cible}`} onClick={() => setSessionId(item.id)} />)}</div></CardContent></Card>
+            {sessionId && <Card><CardContent className="space-y-5 p-6"><div><h2 className="text-2xl font-bold">2. Choisir le centre</h2><p className="text-muted-foreground">Seuls les centres configurés pour la session sont proposés.</p></div><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">{sessionCentres.map((item) => <ChoiceCard key={item.id} selected={centreId === item.id} title={item.nom} subtitle={item.code} onClick={() => setCentreId(item.id)} />)}</div></CardContent></Card>}
+          </>}
           {sessionId && centreId && <Card><CardContent className="space-y-5 p-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-2xl font-bold">3. Programmer une séance</h2><p className="text-muted-foreground">L’évaluation est créée en une seule opération comme séance spéciale.</p></div>{permissions.includes(P.PLAN_SEANCE) && <Button size="lg" className="h-12 px-6 text-base" onClick={() => setShowProgram(!showProgram)}><Plus className="mr-2 size-5" />Programmer une séance</Button>}</div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-2xl font-bold">{isCenterManager ? "Programmer une séance" : "3. Programmer une séance"}</h2><p className="text-muted-foreground">{isCenterManager ? "Associez une activité du catalogue national ou choisissez « Sans activité du catalogue » pour une séance autonome." : "L’évaluation est créée en une seule opération comme séance spéciale."}</p></div>{permissions.includes(P.PLAN_SEANCE) && <Button size="lg" className="h-12 px-6 text-base" onClick={() => setShowProgram(!showProgram)}><Plus className="mr-2 size-5" />Programmer une séance</Button>}</div>
             {showProgram && <form onSubmit={program} className="space-y-6 rounded-2xl border bg-muted/20 p-6">
               <div><p className="mb-3 font-medium">Type de séance</p><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">{SESSION_TYPES.map(([value, title, subtitle]) => <ChoiceCard key={value} selected={sessionType === value} title={title} subtitle={subtitle} onClick={() => setSessionType(value)} />)}</div></div>
               {(sessionType === "ACTIVITE" || sessionType === "EVALUATION") && <div><p className="mb-3 font-medium">{sessionType === "EVALUATION" ? "Activité évaluée — facultative" : "Activité associée — facultative"}</p><div className="grid max-h-64 gap-3 overflow-y-auto md:grid-cols-2 xl:grid-cols-4"><ChoiceCard selected={activityId === null} title="Sans activité du catalogue" onClick={() => setActivityId(null)} />{activities.map((item) => <ChoiceCard key={item.id} selected={activityId === item.id} title={item.titre} subtitle={item.code} onClick={() => setActivityId(item.id)} />)}</div></div>}
               <div><p className="mb-3 font-medium">Formateur chargé de la séance — facultatif</p><p className="mb-3 text-sm text-muted-foreground">Seuls les acteurs ayant le rôle Formateur dans cette session et ce centre sont proposés.</p><div className="grid max-h-64 gap-3 overflow-y-auto md:grid-cols-2 xl:grid-cols-4"><ChoiceCard selected={formateurId === null} title="Aucun formateur affecté" onClick={() => setFormateurId(null)} />{formateurs.map((item) => <ChoiceCard key={item.affectationId} selected={formateurId === item.id} title={item.nom} subtitle="Formateur" onClick={() => setFormateurId(item.id)} />)}</div></div>
-              <div className="grid gap-5 md:grid-cols-2"><label className="space-y-2 font-medium">Titre<Input name="titre" className="h-12" required /></label><label className="space-y-2 font-medium">Lieu<Input name="lieu" className="h-12" required /></label><label className="space-y-2 font-medium">Date<Input name="date_seance" type="date" className="h-12" min={selectedSession?.date_debut} max={selectedSession?.date_fin} required /></label><div className="grid grid-cols-2 gap-3"><label className="space-y-2 font-medium">Début<Input name="heure_debut" type="time" className="h-12" required /></label><label className="space-y-2 font-medium">Fin<Input name="heure_fin" type="time" className="h-12" required /></label></div></div>
+              <div className="grid gap-5 md:grid-cols-2"><label className="space-y-2 font-medium">Titre<Input name="titre" className="h-12" required /></label><label className="space-y-2 font-medium">Lieu<Input name="lieu" className="h-12" required /></label><label className="space-y-2 font-medium">Date<Input name="date_seance" type="date" className="h-12" min={sessionDateStart} max={sessionDateEnd} required /></label><div className="grid grid-cols-2 gap-3"><label className="space-y-2 font-medium">Début<Input name="heure_debut" type="time" className="h-12" required /></label><label className="space-y-2 font-medium">Fin<Input name="heure_fin" type="time" className="h-12" required /></label></div></div>
               {sessionType === "EVALUATION" && <><div><p className="mb-3 font-medium">Type d’évaluation</p><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{EVALUATION_TYPES.map(([value, label]) => <ChoiceCard key={value} selected={evaluationType === value} title={label} onClick={() => setEvaluationType(value)} />)}</div></div><div className="grid gap-5 md:grid-cols-2"><label className="space-y-2 font-medium">Barème<Input name="bareme" type="number" min="0.01" step="0.01" className="h-12" required /></label><label className="space-y-2 font-medium">Coefficient<Input name="coefficient" type="number" min="0.01" step="0.01" defaultValue="1" className="h-12" required /></label></div></>}
               <label className="block space-y-2 font-medium">Observations<textarea name="observations" className="min-h-24 w-full rounded-xl border bg-background p-3" /></label>
               <Button type="submit" size="lg" className="h-12 min-w-64 text-base" disabled={saving}>{saving ? <LoaderCircle className="mr-2 size-5 animate-spin" /> : sessionType === "EVALUATION" ? <ClipboardCheck className="mr-2 size-5" /> : <CalendarDays className="mr-2 size-5" />}Programmer</Button>

@@ -19,8 +19,8 @@ export function IncidentsPage() {
           </span>
           <h2 className="mt-4 text-lg font-semibold">Gestion des incidents</h2>
           <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-            Cette entrée reste accessible à tout acteur disposant d’une affectation active. Les écrans de signalement,
-            de traitement hiérarchique et de suivi seront branchés sur le module incidents du backend.
+            Le signalement et le suivi des incidents ne sont pas encore disponibles dans votre espace. Pour une
+            situation urgente, adressez-vous à votre responsable.
           </p>
         </CardContent>
       </Card>

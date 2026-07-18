@@ -56,8 +56,10 @@ export function SessionParametersPage({ configure = false }: { configure?: boole
   useEffect(() => {
     if (!sessionId) return
     const id = Number(sessionId)
-    setLoading(true)
-    sessionsApi.session(id)
+
+    queueMicrotask(() => {
+      setLoading(true)
+      void sessionsApi.session(id)
       .then(async (currentSession) => {
         setSession(currentSession)
         if (currentSession.parametres) {
@@ -81,6 +83,7 @@ export function SessionParametersPage({ configure = false }: { configure?: boole
       })
       .catch((exception) => setError(getApiErrorMessage(exception)))
       .finally(() => setLoading(false))
+    })
   }, [sessionId])
 
   function setField<K extends keyof SessionParametersPayload>(key: K, value: SessionParametersPayload[K]) {
@@ -155,7 +158,7 @@ export function SessionParametersPage({ configure = false }: { configure?: boole
   return <>
     <PageHeader
       title={configure ? "Configurer les paramètres" : "Modifier les paramètres"}
-      description="Choisissez les centres d’accueil, les modules, les seuils, les directives et les documents exigés."
+      description="Choisissez les centres d’accueil, les services proposés, les seuils, les consignes et les documents exigés."
       backTo={`/app/sessions/${sessionId}`}
     />
     {error && <div className="mb-5"><ErrorBox message={error} /></div>}

@@ -132,7 +132,7 @@ export function ImportRowsPage() {
       await new Promise((resolve) => window.setTimeout(resolve, delai))
     }
 
-    throw new Error("La validation prend plus de temps que prévu. Rechargez la page pour consulter son état.")
+    throw new Error("La validation prend plus de temps que prévu. Revenez dans quelques instants pour consulter son avancement.")
   }, [importId])
 
   const load = useCallback(async () => {
@@ -266,7 +266,7 @@ export function ImportRowsPage() {
     <>
       <PageHeader
         title="Lignes de l’import"
-        description="Contrôlez les personnes détectées, corrigez uniquement les lignes en erreur et consultez les détails sans manipuler de JSON."
+        description="Contrôlez les personnes détectées, corrigez uniquement les lignes en erreur et consultez le détail de chaque dossier."
         backTo={`/app/imports/${importId}`}
       />
 
@@ -356,7 +356,7 @@ export function ImportRowsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-12 px-5">
-                  <input type="checkbox" aria-label="Sélectionner les lignes de cette page" checked={allPageSelected} onChange={togglePage} disabled={selectableRows.length === 0} className="size-4 accent-primary" />
+                  <input type="checkbox" aria-label="Sélectionner les lignes affichées" checked={allPageSelected} onChange={togglePage} disabled={selectableRows.length === 0} className="size-4 accent-primary" />
                 </TableHead>
                 <TableHead>Ligne</TableHead>
                 <TableHead>Personne</TableHead>
@@ -427,7 +427,7 @@ export function ImportRowsPage() {
       {!loading && count > 0 && (
         <div className="mt-4 flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-muted-foreground">
-            {count.toLocaleString("fr-FR")} ligne(s) · page {page} sur {totalPages}
+            {count.toLocaleString("fr-FR")} ligne(s) · affichage {page} sur {totalPages}
           </p>
           <div className="flex gap-2">
             <Button variant="outline" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>

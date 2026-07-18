@@ -117,3 +117,70 @@ export type CenterOrganizationSummary = {
     peut_marquer_pret: boolean
   }
 }
+
+
+export type Section = {
+  id: number
+  session: { id: number; code?: string; nom?: string }
+  centre: Pick<Center, "id" | "code" | "nom">
+  nom: string
+  code: string
+  capacite_max: number
+  statut: string
+}
+
+export type Group = {
+  id: number
+  section: Section
+  nom: string
+  code: string
+  capacite_max: number
+  statut: string
+}
+
+export type CenterAssignmentSummary = {
+  id: number
+  immerge_id: number
+  session_id: number
+  centre_id: number
+  code_fasoim?: string | null
+}
+
+export type GroupAssignment = {
+  id: number
+  affectation_centre: CenterAssignmentSummary
+  groupe: Group
+  statut: string
+  date_affectation?: string | null
+  observations?: string
+}
+
+export type BedAssignment = {
+  id: number
+  affectation_centre: CenterAssignmentSummary
+  lit: Bed
+  statut: string
+  date_attribution?: string | null
+  date_liberation?: string | null
+  observations?: string
+}
+
+export type OrganizationTaskLaunch = {
+  task_id: string
+  operation: string
+  message: string
+}
+
+export type OrganizationProgress = {
+  task_id: string
+  operation?: string
+  statut: string
+  progression: number
+  message?: string
+  total: number
+  traites: number
+  crees: number
+  restants: number
+  erreurs: number
+  resultat?: unknown
+}

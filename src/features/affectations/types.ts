@@ -78,6 +78,7 @@ export type RegionalAssignment = {
   est_ouverte: boolean
   profil_source?: {
     type_immerge?: string
+    identite_affichable?: string
     sexe?: string
     region_reference?: string
     province_reference?: string
@@ -117,4 +118,100 @@ export type AssignmentProgress = {
     affectation_ids: number[]
     details: Record<string, unknown>
   } | null
+}
+
+export type RegionalCapacityCenter = {
+  centre_id: number
+  centre_code: string
+  centre_nom: string
+  province: string
+  ville: string
+  capacite_ouverte: number
+}
+
+export type RegionalCapacity = {
+  region_id: number
+  region_code: string
+  region_nom: string
+  nombre_centres: number
+  capacite_ouverte: number
+  propositions_en_attente: number
+  affectations_validees: number
+  places_reservees: number
+  occupation: number
+  disponible: number
+  centres: RegionalCapacityCenter[]
+}
+
+export type RegionalCapacityReport = {
+  session: {
+    id: number
+    code: string
+    nom: string
+    statut: string
+    type_session: string
+    public_cible: "BEPC" | "BAC" | "CONCOURS" | "SELECTIONNE" | "VOLONTAIRE" | "MIXTE" | string
+  }
+  capacite_totale: number
+  propositions_en_attente_total: number
+  affectations_validees_total: number
+  places_reservees_total: number
+  occupation_totale: number
+  disponible_total: number
+  candidats_disponibles: number
+  maximum_proposable: number
+  regions: RegionalCapacity[]
+}
+
+
+export type CenterAssignment = {
+  id: number
+  immerge: AssignmentImmerge
+  session: AssignmentSession
+  affectation_regionale_id: number
+  centre: Center
+  statut: "PROPOSEE" | "ACTIVE" | "REJETEE" | "ANNULEE" | "TRANSFEREE" | string
+  affecte_par: AssignmentActor | null
+  date_affectation: string
+  motif: string
+  est_proposee: boolean
+  est_active: boolean
+  est_ouverte: boolean
+  profil_source?: RegionalAssignment["profil_source"]
+  organisation_interne?: {
+    section: { id: number; nom: string; code: string } | null
+    groupe: { id: number; nom: string; code: string } | null
+    dortoir: { id: number; nom: string } | null
+    lit: { id: number; numero_lit: string } | null
+  }
+}
+
+export type CenterCapacity = {
+  centre_id: number
+  centre_code: string
+  centre_nom: string
+  province: string
+  ville: string
+  genre: string
+  publics_acceptes: string[]
+  niveaux_acceptes: string[]
+  capacite_ouverte: number
+  propositions_en_attente: number
+  affectations_validees: number
+  places_reservees: number
+  disponible: number
+}
+
+export type CenterCapacityReport = {
+  session: RegionalCapacityReport["session"]
+  region: Region
+  nombre_centres: number
+  capacite_totale: number
+  propositions_en_attente_total: number
+  affectations_validees_total: number
+  places_reservees_total: number
+  disponible_total: number
+  candidats_disponibles: number
+  maximum_proposable: number
+  centres: CenterCapacity[]
 }

@@ -14,6 +14,18 @@ export const ORGANISATION_PERMISSIONS = {
   GENERATE_STRUCTURES: "generer_sections_groupes",
   VALIDATE_CENTER_ORGANIZATION: "valider_organisation_interne",
   MARK_CENTER_READY: "marquer_centre_pret_publication",
+  CREATE_SECTION: "creer_section",
+  UPDATE_SECTION: "modifier_section",
+  DELETE_SECTION: "supprimer_section",
+  CREATE_GROUP: "creer_groupe",
+  UPDATE_GROUP: "modifier_groupe",
+  DELETE_GROUP: "supprimer_groupe",
+  ASSIGN_GROUP: "affecter_immerge_groupe",
+  REMOVE_GROUP: "retirer_immerge_groupe",
+  ASSIGN_BED: "attribuer_lit",
+  PROPOSE_BED: "proposer_attribution_lit",
+  UPDATE_BED_ASSIGNMENT: "modifier_attribution_lit",
+  RELEASE_BED: "liberer_lit",
 } as const
 
 export type OrganisationPermission = typeof ORGANISATION_PERMISSIONS[keyof typeof ORGANISATION_PERMISSIONS]

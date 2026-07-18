@@ -12,6 +12,8 @@ import { VOLUNTEER_REQUEST_PERMISSIONS } from "@/features/volunteers/requests-pe
 import { useAuthStore } from "@/stores/auth-store"
 import { AdministrationDashboard } from "@/workspaces/administration/dashboard"
 import { DgasDashboard } from "@/workspaces/dgas/dashboard"
+import { RegionalDirectionDashboard } from "@/workspaces/direction-regionale/dashboard"
+import { CenterManagerDashboard } from "@/workspaces/responsable-centre/dashboard"
 import { resolveWorkspace } from "@/workspaces/workspace-resolver"
 
 const roleMessages: Record<string, { title: string; description: string }> = {
@@ -66,6 +68,14 @@ export function DashboardPage() {
   if (workspace === "DGAS") {
     return <DgasDashboard />
   }
+
+  if (workspace === "DIRECTION_REGIONALE") {
+    return <RegionalDirectionDashboard />
+  }
+
+  if (workspace === "RESPONSABLE_CENTRE") {
+    return <CenterManagerDashboard />
+  }
   const primaryRole = assignment?.roles[0]
   const permissions = assignment?.permissions ?? []
   const message = roleMessages[primaryRole?.code ?? ""] ?? { title: "Bienvenue dans votre espace FasoIM", description: "Retrouvez les opérations disponibles dans votre contexte de travail actuel." }
@@ -84,7 +94,7 @@ export function DashboardPage() {
       <p className="mt-2 max-w-3xl text-base leading-6 text-primary-foreground/85">{message.description}</p>
     </section>
 
-    {!assignment ? <Card className="border-amber-300 bg-amber-50"><CardContent className="p-6"><h2 className="text-xl font-semibold">Aucune affectation active</h2><p className="mt-2 text-base text-muted-foreground">Votre compte est actif, mais aucune affectation ne vous permet encore d’accéder aux modules de travail.</p></CardContent></Card> : <>
+    {!assignment ? <Card className="border-amber-300 bg-amber-50"><CardContent className="p-6"><h2 className="text-xl font-semibold">Aucune affectation active</h2><p className="mt-2 text-base text-muted-foreground">Votre compte est actif, mais aucune affectation ne vous permet encore d’accéder à un espace de travail.</p></CardContent></Card> : <>
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card className="overflow-hidden">
           <CardContent className="flex items-center gap-4 p-5">

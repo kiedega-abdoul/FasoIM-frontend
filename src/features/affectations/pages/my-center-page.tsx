@@ -1,14 +1,14 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import { BedDouble, Building2, DoorOpen, ListChecks, MapPinned } from "lucide-react"
+import { ArrowRight, BedDouble, Building2, DoorOpen, ListChecks, MapPinned } from "lucide-react"
 
 import { getApiErrorMessage } from "@/api/api-error"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { EmptyState, ErrorBox, Loading, PageHeader, PermissionGuard, StatusBadge } from "@/features/accounts/components"
 import { organisationApi } from "@/features/organisation/api"
-import type { Bed, Dormitory } from "@/features/organisation/types"
+import type { Bed, CenterOrganizationRule, Dormitory } from "@/features/organisation/types"
 import { currentCenterId } from "../scope"
 import { affectationsApi } from "../api"
 import { AFFECTATION_PERMISSIONS as P } from "../permissions"
@@ -25,6 +25,7 @@ export function MyCenterPage() {
   const [center, setCenter] = useState<Center | null>(null)
   const [dormitories, setDormitories] = useState<Dormitory[]>([])
   const [beds, setBeds] = useState<Bed[]>([])
+  const [organizationRule, setOrganizationRule] = useState<CenterOrganizationRule | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const centerId = currentCenterId()
@@ -38,14 +39,17 @@ export function MyCenterPage() {
           setCenter(null)
           setDormitories([])
           setBeds([])
+          setOrganizationRule(null)
           return
         }
         const centerData = await affectationsApi.center(centerId)
         const dormitoriesData = await organisationApi.dormitories({ centre_id: centerId }).catch(() => [])
         const bedsData = await organisationApi.beds({ centre_id: centerId }).catch(() => [])
+        const rulesData = await organisationApi.centerRules({ centre_id: centerId }).catch(() => [])
         setCenter(centerData)
         setDormitories(dormitoriesData)
         setBeds(bedsData)
+        setOrganizationRule(rulesData[0] ?? null)
       } catch (exception) {
         setError(getApiErrorMessage(exception))
       } finally {
@@ -56,31 +60,37 @@ export function MyCenterPage() {
     void load()
   }, [centerId])
 
-  const capacity = useMemo(() => dormitories.reduce((total, dormitory) => total + Number(dormitory.capacite || 0), 0), [dormitories])
   const usableBeds = useMemo(() => beds.filter((bed) => bed.est_utilisable).length, [beds])
 
   if (loading) return <Loading />
 
   return <>
     <PageHeader title="Mon centre" description="Informations et capacité d’accueil de votre centre." backTo="/app" />
-    {!centerId && <EmptyState message="Cette page s’utilise avec une affectation de centre." />}
+    {!centerId && <EmptyState message="Cette opération nécessite une affectation active à un centre." />}
     {error && <ErrorBox message={error} />}
     {center && <div className="space-y-6">
-      <Card><CardContent className="p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-2xl font-bold">{center.nom}</h2>
-              <StatusBadge value={center.statut.toLowerCase()} />
+      <Card className="overflow-hidden border-primary/15 shadow-sm"><CardContent className="p-0">
+        <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-6 lg:p-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-4">
+              <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm"><Building2 className="size-7" /></span>
+              <div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <h2 className="text-2xl font-bold tracking-tight lg:text-3xl">{center.nom}</h2>
+                  <StatusBadge value={center.statut.toLowerCase()} />
+                </div>
+                <p className="mt-2 font-medium text-foreground/80">{center.ville}, {center.province}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{center.adresse || "Adresse non renseignée"}</p>
+              </div>
             </div>
-            <p className="mt-2 text-sm text-muted-foreground">{center.code} · {center.ville}, {center.province}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{center.adresse || "Adresse non renseignée"}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <PermissionGuard permission={P.UPDATE_CENTER}>
-              <Button render={<Link to={`/app/centres/${center.id}/modifier`} />} variant="outline" className="rounded-xl">Modifier le centre</Button>
-            </PermissionGuard>
-            <Button render={<Link to="/app/organisation-centre" />} className="rounded-xl">Organisation du centre</Button>
+            <div className="flex flex-wrap gap-2">
+              <PermissionGuard permission={P.UPDATE_CENTER}>
+                <Button render={<Link to={`/app/centres/${center.id}/modifier`} />} variant="outline" size="lg" className="rounded-full px-5">Modifier le centre</Button>
+              </PermissionGuard>
+              <Button render={<Link to="/app/organisation-centre" />} size="lg" className="rounded-full px-5 shadow-sm">
+                Organisation du centre <ArrowRight className="size-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </CardContent></Card>
@@ -89,7 +99,7 @@ export function MyCenterPage() {
         <StatCard icon={MapPinned} label="Région" value={center.region?.nom || center.region?.code || "Non précisée"} />
         <StatCard icon={DoorOpen} label="Dortoirs" value={dormitories.length} />
         <StatCard icon={BedDouble} label="Lits utilisables" value={usableBeds} />
-        <StatCard icon={Building2} label="Capacité déclarée" value={capacity || "Non renseignée"} />
+        <StatCard icon={Building2} label="Places ouvertes" value={organizationRule?.capacite_ouverte ?? "Non configurées"} />
       </section>
 
       <Card><CardContent className="grid gap-5 p-6 sm:grid-cols-2 lg:grid-cols-3">

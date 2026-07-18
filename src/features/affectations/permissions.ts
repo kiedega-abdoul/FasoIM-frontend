@@ -18,6 +18,12 @@ export const AFFECTATION_PERMISSIONS = {
   UPDATE_REGIONAL_ASSIGNMENT: "modifier_affectation_regionale",
   VALIDATE_REGIONAL_ASSIGNMENT: "valider_affectation_regionale",
   CANCEL_REGIONAL_ASSIGNMENT: "annuler_affectation_regionale",
+  PROPOSE_CENTER_ASSIGNMENT: "proposer_affectation_centre",
+  ASSIGN_CENTER: "affecter_centre",
+  VIEW_CENTER_ASSIGNMENTS: "consulter_affectations_centres",
+  UPDATE_CENTER_ASSIGNMENT: "modifier_affectation_centre",
+  VALIDATE_CENTER_ASSIGNMENT: "valider_affectation_centre",
+  CANCEL_CENTER_ASSIGNMENT: "annuler_affectation_centre",
 } as const
 
 export type AffectationPermission = typeof AFFECTATION_PERMISSIONS[keyof typeof AFFECTATION_PERMISSIONS]

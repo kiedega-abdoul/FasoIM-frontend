@@ -74,7 +74,7 @@ export function ImportErrorsPage() {
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="h-11 pl-9"
-              placeholder="Rechercher par ligne, champ, message ou valeur"
+              placeholder="Rechercher par ligne, information, message ou valeur"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
@@ -111,7 +111,7 @@ export function ImportErrorsPage() {
               <TableRow>
                 <TableHead className="px-5">Ligne</TableHead>
                 <TableHead>Gravité</TableHead>
-                <TableHead>Champ</TableHead>
+                <TableHead>Information concernée</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Message</TableHead>
                 <TableHead>Valeur reçue</TableHead>
@@ -142,7 +142,7 @@ export function ImportErrorsPage() {
       {!loading && count > 0 && (
         <div className="mt-4 flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-muted-foreground">
-            {count.toLocaleString("fr-FR")} erreur(s) · page {page} sur {totalPages}
+            {count.toLocaleString("fr-FR")} erreur(s) · affichage {page} sur {totalPages}
           </p>
           <div className="flex gap-2">
             <Button variant="outline" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>
