@@ -57,7 +57,7 @@ export function AssignmentsPage() {
           <Card>
             <CardContent className="flex items-center gap-4 p-5">
               <span className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPin className="size-5" /></span>
-              <div><p className="text-sm text-muted-foreground">Périmètre</p><p className="mt-1 text-lg font-semibold capitalize">{context.affectation_courante.niveau_affectation}</p></div>
+              <div><p className="text-sm text-muted-foreground">Zone de travail</p><p className="mt-1 text-lg font-semibold capitalize">{context.affectation_courante.niveau_affectation}</p></div>
             </CardContent>
           </Card>
           <Card>
@@ -105,8 +105,8 @@ export function AssignmentsPage() {
                   <div className="mt-5 space-y-3 text-sm">
                     <p><span className="font-semibold">Rôle :</span> {assignment.roles.map((role) => role.libelle).join(", ") || "Non défini"}</p>
                     <p><span className="font-semibold">Session :</span> {assignment.session?.nom || "Toutes les sessions"}</p>
-                    <p><span className="font-semibold">Région :</span> {assignment.region_code || "Non précisée"}</p>
-                    <p><span className="font-semibold">Centre :</span> {assignment.centre_id ?? "Non précisé"}</p>
+                    <p><span className="font-semibold">Région :</span> {assignment.region_nom || assignment.region_code || "Non précisée"}</p>
+                    <p><span className="font-semibold">Centre :</span> {assignment.centre_nom || (assignment.centre_id ? `Centre ${assignment.centre_id}` : "Non précisé")}</p>
                     <p className="flex items-center gap-2 text-muted-foreground">
                       <CalendarDays className="size-4" />
                       Du {assignment.date_debut} {assignment.date_fin ? `au ${assignment.date_fin}` : "sans date de fin"}

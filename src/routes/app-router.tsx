@@ -15,6 +15,8 @@ import { LoginPage } from "@/pages/login-page"
 import { NotFoundPage } from "@/pages/not-found-page"
 import { IncidentsPage } from "@/pages/incidents-page"
 import { VerificationAttestationPage } from "@/pages/verification-attestation-page"
+import { AttestationChoicePage } from "@/pages/attestation-choice-page"
+import { DownloadAttestationPage } from "@/pages/download-attestation-page"
 import { ProtectedRoute } from "@/routes/protected-route"
 import { PermissionRoute } from "@/routes/permission-route"
 import { ACCOUNT_PERMISSIONS as AP } from "@/features/accounts/permissions"
@@ -57,9 +59,12 @@ import { VolunteerRequestDetailPage, VolunteerRequestsListPage } from "@/feature
 import { VOLUNTEER_REQUEST_ACCESS, VOLUNTEER_REQUEST_PERMISSIONS as VRP } from "@/features/volunteers/requests-permissions"
 import { ACTIVITES_ACCESS } from "@/features/activites/permissions"
 import { AdministrationActivitiesPage } from "@/features/activites/pages/administration-activities-page"
+import { TrainerSessionsPage } from "@/features/activites/pages/formateur-seances-page"
+import { TrainerSessionDetailPage } from "@/features/activites/pages/formateur-seance-detail-page"
 import { ImmergesListPage } from "@/features/immerges/pages/immerges-list-page"
 import { CenterImmergesPage } from "@/features/immerges/pages/center-immerges-page"
 import { IMMERGE_PERMISSIONS } from "@/features/immerges/permissions"
+import { RegionalCertificatesPage } from "@/features/documents/pages/regional-certificates-page"
 
 
 export function AppRouter() {
@@ -71,7 +76,10 @@ export function AppRouter() {
         <Route path="demande-volontaire" element={<VolunteerChoicePage />} />
         <Route path="demande-volontaire/nouvelle" element={<VolunteerApplicationPage />} />
         <Route path="demande-volontaire/suivi" element={<VolunteerFollowUpPage />} />
-        <Route path="verification-attestation" element={<VerificationAttestationPage />} />
+        <Route path="attestation" element={<AttestationChoicePage />} />
+        <Route path="attestation/verifier" element={<VerificationAttestationPage />} />
+        <Route path="attestation/telecharger" element={<DownloadAttestationPage />} />
+        <Route path="verification-attestation" element={<Navigate to="/attestation/verifier" replace />} />
         <Route path="connexion" element={<Navigate to="/espace-acteur/connexion" replace />} />
       </Route>
 
@@ -132,7 +140,10 @@ export function AppRouter() {
           <Route element={<PermissionRoute permissions={[...ORGANISATION_GROUPS.INTERNAL_DISTRIBUTION]} />}><Route path="repartition-interne" element={<InternalDistributionPage />} /></Route>
           <Route element={<PermissionRoute permission={OP.VIEW_CENTER_RULES} />}><Route path="finalisation-centre" element={<CenterFinalizationPage />} /></Route>
 
+          <Route element={<PermissionRoute permission="consulter_publications" />}><Route path="directeur-regional/attestations" element={<RegionalCertificatesPage />} /></Route>
+
           <Route element={<PermissionRoute permissions={[...ACTIVITES_ACCESS]} />}><Route path="activites" element={<AdministrationActivitiesPage />} /></Route>
+          <Route element={<PermissionRoute permission="consulter_seances" />}><Route path="formateur/seances" element={<TrainerSessionsPage />} /><Route path="formateur/seances/:id" element={<TrainerSessionDetailPage />} /></Route>
 
           <Route element={<PermissionRoute permissions={[...KITS_GROUPS.ACCESS]} />}><Route path="kits" element={<KitsPage />} /></Route>
           <Route element={<PermissionRoute permission={KP.CREATE_BRING_ARTICLE} />}><Route path="kits/articles/nouveau-a-apporter" element={<KitArticleFormPage type="A_APPORTER" />} /></Route>

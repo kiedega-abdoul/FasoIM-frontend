@@ -10,8 +10,6 @@ import { Label } from "@/components/ui/label"
 import { affectationsApi } from "@/features/affectations/api"
 import type { Center } from "@/features/affectations/types"
 import { ErrorBox, Loading, PageHeader } from "@/features/accounts/components"
-import { organisationApi } from "@/features/organisation/api"
-import type { CenterOrganizationRule } from "@/features/organisation/types"
 import { sessionsApi } from "../api"
 import { MODE_LABELS } from "../labels"
 import type { ImmersionSession, SessionCenterSelection, SessionParametersPayload } from "../types"
@@ -36,9 +34,8 @@ const empty: SessionParametersPayload = {
   centres_accueil: [],
 }
 
-type EligibleCenter = {
+type AvailableCenter = {
   centre: Center
-  rule: CenterOrganizationRule
 }
 
 export function SessionParametersPage({ configure = false }: { configure?: boolean }) {
@@ -46,7 +43,7 @@ export function SessionParametersPage({ configure = false }: { configure?: boole
   const navigate = useNavigate()
   const [session, setSession] = useState<ImmersionSession | null>(null)
   const [form, setForm] = useState<SessionParametersPayload>(empty)
-  const [eligibleCenters, setEligibleCenters] = useState<EligibleCenter[]>([])
+  const [availableCenters, setAvailableCenters] = useState<AvailableCenter[]>([])
   const [centerQuery, setCenterQuery] = useState("")
   const [document, setDocument] = useState("")
   const [loading, setLoading] = useState(true)
@@ -66,20 +63,14 @@ export function SessionParametersPage({ configure = false }: { configure?: boole
           setForm({ ...currentSession.parametres, centres_accueil: currentSession.parametres.centres_accueil ?? [] })
         }
 
-        const [centers, rules] = await Promise.all([
-          affectationsApi.centers({ statut: "ACTIF", page_size: 1000 }),
-          organisationApi.centerRules({ session_id: id, page_size: 1000 }),
-        ])
-        const centersById = new Map(centers.map((center) => [center.id, center]))
-        const eligible = rules
-          .filter((rule) => rule.capacite_ouverte > 0)
-          .map((rule) => ({ centre: centersById.get(rule.centre.id), rule }))
-          .filter((entry): entry is EligibleCenter => Boolean(entry.centre))
+        const centers = await affectationsApi.centers({ statut: "ACTIF", page_size: 1000 })
+        const available = centers
+          .map((centre) => ({ centre }))
           .sort((a, b) => {
             const regionCompare = a.centre.region.nom.localeCompare(b.centre.region.nom, "fr")
             return regionCompare || a.centre.nom.localeCompare(b.centre.nom, "fr")
           })
-        setEligibleCenters(eligible)
+        setAvailableCenters(available)
       })
       .catch((exception) => setError(getApiErrorMessage(exception)))
       .finally(() => setLoading(false))
@@ -90,7 +81,7 @@ export function SessionParametersPage({ configure = false }: { configure?: boole
     setForm((current) => ({ ...current, [key]: value }))
   }
 
-  function toggleCenter(entry: EligibleCenter) {
+  function toggleCenter(entry: AvailableCenter) {
     const selected = form.centres_accueil.some((center) => center.centre_id === entry.centre.id)
     if (selected) {
       setField("centres_accueil", form.centres_accueil.filter((center) => center.centre_id !== entry.centre.id))
@@ -106,15 +97,10 @@ export function SessionParametersPage({ configure = false }: { configure?: boole
 
   const filteredCenters = useMemo(() => {
     const query = centerQuery.trim().toLowerCase()
-    if (!query) return eligibleCenters
-    return eligibleCenters.filter(({ centre }) => [centre.nom, centre.code, centre.region.nom, centre.ville, centre.province]
+    if (!query) return availableCenters
+    return availableCenters.filter(({ centre }) => [centre.nom, centre.code, centre.region.nom, centre.ville, centre.province]
       .some((value) => value?.toLowerCase().includes(query)))
-  }, [centerQuery, eligibleCenters])
-
-  const totalCapacity = useMemo(() => {
-    const selectedIds = new Set(form.centres_accueil.map((center) => center.centre_id))
-    return eligibleCenters.reduce((sum, entry) => selectedIds.has(entry.centre.id) ? sum + entry.rule.capacite_ouverte : sum, 0)
-  }, [eligibleCenters, form.centres_accueil])
+  }, [availableCenters, centerQuery])
 
   function selectAllVisible() {
     const current = new Map(form.centres_accueil.map((center) => [center.centre_id, center]))
@@ -152,12 +138,12 @@ export function SessionParametersPage({ configure = false }: { configure?: boole
 
   if (loading) return <Loading />
   if (!session) return <ErrorBox message={error || "Session introuvable."} />
-  if (configure && session.parametres) return <ErrorBox message="Les paramètres sont déjà configurés." />
-  if (!configure && !session.parametres) return <ErrorBox message="Les paramètres ne sont pas encore configurés." />
+  if (configure && session.parametres) return <ErrorBox message="L’organisation de cette session est déjà définie." />
+  if (!configure && !session.parametres) return <ErrorBox message="L’organisation de cette session n’est pas encore définie." />
 
   return <>
     <PageHeader
-      title={configure ? "Configurer les paramètres" : "Modifier les paramètres"}
+      title={configure ? "Organiser la session" : "Modifier l’organisation"}
       description="Choisissez les centres d’accueil, les services proposés, les seuils, les consignes et les documents exigés."
       backTo={`/app/sessions/${sessionId}`}
     />
@@ -171,7 +157,7 @@ export function SessionParametersPage({ configure = false }: { configure?: boole
                 <div className="rounded-xl bg-primary/10 p-2 text-primary"><Building2 className="size-5" /></div>
                 <div>
                   <h2 className="text-xl font-semibold">Centres d’accueil</h2>
-                  <p className="text-sm text-muted-foreground">Seuls les centres disposant déjà d’une règle d’organisation et d’une capacité ouverte positive pour cette session sont proposés.</p>
+                  <p className="text-sm text-muted-foreground">Sélectionnez les centres actifs autorisés à participer à cette session. Leur organisation sera définie ensuite par les responsables concernés.</p>
                 </div>
               </div>
             </div>
@@ -181,8 +167,8 @@ export function SessionParametersPage({ configure = false }: { configure?: boole
                 <p className="mt-1 text-2xl font-semibold">{form.centres_accueil.length}</p>
               </div>
               <div className="rounded-xl border bg-muted/30 p-3">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Capacité totale</p>
-                <p className="mt-1 text-2xl font-semibold">{totalCapacity}</p>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Centres disponibles</p>
+                <p className="mt-1 text-2xl font-semibold">{availableCenters.length}</p>
               </div>
             </div>
           </div>
@@ -198,9 +184,9 @@ export function SessionParametersPage({ configure = false }: { configure?: boole
             <Button type="button" variant="outline" className="h-12" onClick={clearCenters} disabled={form.centres_accueil.length === 0}>Effacer</Button>
           </div>
 
-          {eligibleCenters.length === 0 ? (
+          {availableCenters.length === 0 ? (
             <div className="mt-5 rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
-              Aucun centre n’est encore prêt pour cette session. Les responsables de centre doivent d’abord créer leur règle d’organisation avec une capacité ouverte positive.
+              Aucun centre actif n’est disponible. Créez ou réactivez d’abord un centre dans le référentiel national.
             </div>
           ) : filteredCenters.length === 0 ? (
             <div className="mt-5 rounded-xl border border-dashed p-6 text-sm text-muted-foreground">Aucun centre ne correspond à la recherche.</div>
@@ -216,7 +202,7 @@ export function SessionParametersPage({ configure = false }: { configure?: boole
                       <p className="mt-1 text-sm text-muted-foreground">{entry.centre.code} · {entry.centre.region.nom}</p>
                       <div className="mt-3 flex items-center justify-between gap-3 text-sm">
                         <span>{entry.centre.ville || entry.centre.province}</span>
-                        <span className="rounded-full bg-muted px-2.5 py-1 font-medium">{entry.rule.capacite_ouverte} places</span>
+                        <span className="rounded-full bg-muted px-2.5 py-1 font-medium">Organisation à définir</span>
                       </div>
                     </div>
                   </div>
@@ -233,7 +219,7 @@ export function SessionParametersPage({ configure = false }: { configure?: boole
 
       <Card><CardContent className="p-6 sm:p-8"><div className="grid gap-5"><div className="space-y-2"><Label>Directives générales</Label><p className="text-sm text-muted-foreground">Orientations officielles de la session.</p><textarea rows={5} className={textAreaClass} value={form.directives_generales} onChange={(e) => setField("directives_generales",e.target.value)} /></div><div className="space-y-2"><Label>Consignes générales</Label><p className="text-sm text-muted-foreground">Règles pratiques à respecter.</p><textarea rows={5} className={textAreaClass} value={form.consignes_generales} onChange={(e) => setField("consignes_generales",e.target.value)} /></div><div className="space-y-3"><Label>Documents exigés</Label><p className="text-sm text-muted-foreground">Uniquement les pièces à fournir, par exemple une copie de la CNIB.</p><div className="flex gap-3"><Input value={document} onChange={(e) => setDocument(e.target.value)} placeholder="Ex. Copie de la CNIB" /><Button type="button" variant="outline" onClick={() => { const value=document.trim(); if(value){ setField("documents_exiges",[...form.documents_exiges,value]); setDocument("") } }}><Plus className="mr-2 size-4" />Ajouter</Button></div>{form.documents_exiges.map((value,index) => <div key={`${value}-${index}`} className="flex items-center justify-between rounded-xl border px-4 py-3"><span>{value}</span><Button type="button" variant="ghost" onClick={() => setField("documents_exiges",form.documents_exiges.filter((_,current) => current!==index))}><Trash2 className="size-4" /></Button></div>)}</div></div></CardContent></Card>
 
-      <div className="flex justify-end gap-3"><Button type="button" variant="outline" onClick={() => navigate(`/app/sessions/${sessionId}`)}>Annuler</Button><Button type="submit" disabled={submitting || eligibleCenters.length === 0}>{submitting ? "Enregistrement…" : "Enregistrer"}</Button></div>
+      <div className="flex justify-end gap-3"><Button type="button" variant="outline" onClick={() => navigate(`/app/sessions/${sessionId}`)}>Annuler</Button><Button type="submit" disabled={submitting || availableCenters.length === 0}>{submitting ? "Enregistrement…" : "Enregistrer"}</Button></div>
     </form>
   </>
 }

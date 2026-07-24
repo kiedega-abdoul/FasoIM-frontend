@@ -177,7 +177,7 @@ export function VolunteerRequestsListPage() {
       <Card>
         <CardHeader>
           <CardTitle>Liste des demandes</CardTitle>
-          <CardDescription>Seules les demandes complètes et en attente peuvent être acceptées en lot.</CardDescription>
+          <CardDescription>Seules les demandes complètes et en attente peuvent être acceptées ensemble.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <form className="grid gap-3 sm:grid-cols-[1fr_220px_auto]" onSubmit={(event) => { event.preventDefault(); void load() }}>
@@ -241,7 +241,7 @@ export function VolunteerRequestsListPage() {
       </Card>
 
       <Dialog open={batchOpen} onOpenChange={setBatchOpen}>
-        <DialogContent><DialogHeader><DialogTitle>Accepter les demandes sélectionnées</DialogTitle><DialogDescription>Le système revérifiera chaque demande avant de créer les immergés et leurs codes FasoIM.</DialogDescription></DialogHeader>{batchMessage && <div className="rounded-lg border bg-muted/30 p-4 text-sm">{batchMessage}</div>}<DialogFooter><Button variant="outline" onClick={() => setBatchOpen(false)} disabled={batchLoading}>Retour</Button><Button onClick={() => void launchBatch()} disabled={batchLoading}>{batchLoading && <LoaderCircle className="mr-2 size-4 animate-spin" />}Confirmer l’acceptation</Button></DialogFooter></DialogContent>
+        <DialogContent><DialogHeader><DialogTitle>Accepter les demandes sélectionnées</DialogTitle><DialogDescription>Chaque demande sera de nouveau vérifiée avant la création des immergés et de leurs codes FasoIM.</DialogDescription></DialogHeader>{batchMessage && <div className="rounded-lg border bg-muted/30 p-4 text-sm">{batchMessage}</div>}<DialogFooter><Button variant="outline" onClick={() => setBatchOpen(false)} disabled={batchLoading}>Retour</Button><Button onClick={() => void launchBatch()} disabled={batchLoading}>{batchLoading && <LoaderCircle className="mr-2 size-4 animate-spin" />}Confirmer l’acceptation</Button></DialogFooter></DialogContent>
       </Dialog>
     </div>
   )

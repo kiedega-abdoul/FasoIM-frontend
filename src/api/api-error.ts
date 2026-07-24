@@ -22,7 +22,7 @@ function userFacingMessage(value: unknown) {
 
   const isTechnical =
     /^[<{[]/.test(message)
-    || /<!doctype|<html|traceback|exception|request method|request url|django|nameerror|typeerror|valueerror|attributeerror|keyerror|stack trace/i.test(message)
+    || /<!doctype|<html|traceback|exception|request method|request url|django|csrf|nameerror|typeerror|valueerror|attributeerror|keyerror|syntaxerror|integrityerror|databaseerror|internal server error|bad request|method not allowed|service unavailable|stack trace/i.test(message)
 
   return isTechnical ? null : message
 }

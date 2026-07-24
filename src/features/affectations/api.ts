@@ -1,6 +1,6 @@
 import { httpClient } from "@/api/http-client"
 import { currentScopeParams } from "./scope"
-import type { AssignmentProgress, AssignmentTask, Center, CenterPayload, ListResponse, Region, RegionPayload, RegionalAssignment, RegionalCapacityReport, CenterAssignment, CenterCapacityReport } from "./types"
+import type { AssignmentProgress, AssignmentTask, Center, CenterPayload, ListResponse, Region, RegionPayload, RegionalAssignment, RegionalCapacityReport, CenterAssignment, CenterCapacityReport, PaginatedResponse, CenterAssignmentStats } from "./types"
 
 const list = <T>(data: ListResponse<T>) => Array.isArray(data) ? data : data.results
 const withScope = (params?: Record<string, string | number | undefined>) => ({
@@ -54,6 +54,12 @@ export const affectationsApi = {
   },
   async centerAssignments(params?: Record<string, string | number | undefined>) {
     return list((await httpClient.get<ListResponse<CenterAssignment>>("/affectations/affectations-centres/", { params: withScope(params) })).data)
+  },
+  async centerAssignmentsPage(params?: Record<string, string | number | undefined>) {
+    return (await httpClient.get<PaginatedResponse<CenterAssignment>>("/affectations/affectations-centres/", { params: withScope(params) })).data
+  },
+  async centerAssignmentStats(params?: Record<string, string | number | undefined>) {
+    return (await httpClient.get<CenterAssignmentStats>("/affectations/affectations-centres/statistiques-centre/", { params: withScope(params) })).data
   },
   async createCenterAssignment(data: { immerge_id?: number; code_fasoim?: string; centre_id: number; motif?: string }) {
     return (await httpClient.post<CenterAssignment>("/affectations/affectations-centres/affecter-manuellement/", data, { params: withScope() })).data

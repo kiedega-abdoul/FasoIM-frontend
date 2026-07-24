@@ -36,14 +36,14 @@ const modules = [
   },
   {
     label: "Acteurs",
-    description: "Gérer les comptes des acteurs internes de la plateforme.",
+    description: "Gérer les comptes des utilisateurs FasoIM.",
     href: "/app/acteurs",
     permissions: ACCOUNT_GROUPS.ACTORS,
     icon: Users,
   },
   {
     label: "Affectations",
-    description: "Définir le rôle, la session et le périmètre de travail de chaque acteur.",
+    description: "Définir la responsabilité, la session et la zone de travail de chaque utilisateur.",
     href: "/app/affectations",
     permissions: ACCOUNT_GROUPS.ASSIGNMENTS,
     icon: MapPin,

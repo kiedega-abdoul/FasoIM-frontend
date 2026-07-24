@@ -54,7 +54,7 @@ export function ActorsListPage(){
   return <>
     <PageHeader
       title="Gestion des acteurs"
-      description="Gérez les comptes des acteurs internes FasoIM."
+      description="Gérez les comptes des utilisateurs FasoIM."
       backTo="/app"
       actionTo="/app/acteurs/nouveau"
       actionLabel="Créer un acteur"
@@ -190,7 +190,7 @@ export function ActorFormPage({edit=false}:{edit?:boolean}){
       title={edit?'Modifier un acteur':'Créer un acteur'}
       description={edit
         ? "Mettez à jour les informations du compte acteur."
-        : "Renseignez les informations du nouvel acteur interne FasoIM."
+        : "Renseignez les informations du nouvel utilisateur FasoIM."
       }
       backTo={edit&&acteurId?`/app/acteurs/${acteurId}`:'/app/acteurs'}
     />

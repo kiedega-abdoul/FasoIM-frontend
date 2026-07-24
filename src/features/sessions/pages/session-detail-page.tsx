@@ -22,6 +22,19 @@ import type { ImmersionSession } from "../types"
 
 const textAreaClass = "w-full rounded-xl border bg-background px-4 py-3 text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
 
+function closureBlockMessage(block: unknown) {
+  if (typeof block === "string") return block
+  if (block && typeof block === "object") {
+    const record = block as Record<string, unknown>
+    if (typeof record.message === "string") {
+      return typeof record.total === "number"
+        ? `${record.message} (${record.total.toLocaleString("fr-FR")})`
+        : record.message
+    }
+  }
+  return "Une étape obligatoire reste à terminer."
+}
+
 export function SessionDetailPage() {
   const { sessionId } = useParams()
   const navigate = useNavigate()
@@ -56,7 +69,7 @@ export function SessionDetailPage() {
       setError(message)
       const maybeBlocks = (exception as { response?: { data?: { blocages?: unknown[]; session?: { blocages?: unknown[] } } } })?.response?.data
       const blocks = maybeBlocks?.blocages ?? maybeBlocks?.session?.blocages ?? []
-      if (Array.isArray(blocks)) setClosureBlocks(blocks.map((block) => typeof block === "string" ? block : JSON.stringify(block)))
+      if (Array.isArray(blocks)) setClosureBlocks(blocks.map(closureBlockMessage))
     } finally { setBusy("") }
   }
 
@@ -85,7 +98,7 @@ export function SessionDetailPage() {
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary">Vue opérationnelle DGAS</p>
         <h2 className="mt-1 text-2xl font-bold">Centres d’accueil et capacités régionales</h2>
       </div>
-      {!p?.centres_accueil?.length ? <Card><CardContent className="p-6"><p className="font-semibold">Aucun centre d’accueil configuré</p><p className="mt-1 text-sm text-muted-foreground">L’Administration doit sélectionner les centres dans les paramètres de la session.</p></CardContent></Card> : <>
+      {!p?.centres_accueil?.length ? <Card><CardContent className="p-6"><p className="font-semibold">Aucun centre d’accueil sélectionné</p><p className="mt-1 text-sm text-muted-foreground">L’administration doit sélectionner les centres prévus pour cette session.</p></CardContent></Card> : <>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {[
             { label: "Centres d’accueil", value: p.centres_accueil.length, icon: Building2 },
@@ -135,15 +148,15 @@ export function SessionDetailPage() {
 
     {!isDgas && <div className="mt-6 flex flex-wrap gap-3">
       {canEdit && <SessionPermissionGuard permission={P.UPDATE}><Button render={<Link to={`/app/sessions/${session.id}/modifier`} />} variant="outline"><Pencil className="mr-2 size-4" />Modifier la session</Button></SessionPermissionGuard>}
-      {!p && <SessionPermissionGuard permission={P.CONFIGURE}><Button render={<Link to={`/app/sessions/${session.id}/parametres/configurer`} />}><Settings2 className="mr-2 size-4" />Configurer les paramètres</Button></SessionPermissionGuard>}
-      {p && <SessionPermissionGuard permission={P.UPDATE_SETTINGS}><Button render={<Link to={`/app/sessions/${session.id}/parametres/modifier`} />} variant="outline"><Settings2 className="mr-2 size-4" />Modifier les paramètres</Button></SessionPermissionGuard>}
+      {!p && <SessionPermissionGuard permission={P.CONFIGURE}><Button render={<Link to={`/app/sessions/${session.id}/parametres/configurer`} />}><Settings2 className="mr-2 size-4" />Définir l’organisation</Button></SessionPermissionGuard>}
+      {p && <SessionPermissionGuard permission={P.UPDATE_SETTINGS}><Button render={<Link to={`/app/sessions/${session.id}/parametres/modifier`} />} variant="outline"><Settings2 className="mr-2 size-4" />Modifier l’organisation</Button></SessionPermissionGuard>}
       {p && session.statut === "brouillon" && <SessionPermissionGuard permission={P.UPDATE}><Button disabled={busy !== ""} onClick={() => void runAction("open", () => sessionsApi.open(session.id))}><CalendarDays className="mr-2 size-4" />Ouvrir</Button><Button variant="outline" disabled={busy !== ""} onClick={() => void runAction("prepare", () => sessionsApi.prepare(session.id))}><Settings2 className="mr-2 size-4" />Mettre en préparation</Button></SessionPermissionGuard>}
       {p && session.statut === "ouverte" && <SessionPermissionGuard permission={P.UPDATE}><Button variant="outline" disabled={busy !== ""} onClick={() => void runAction("prepare", () => sessionsApi.prepare(session.id))}><Settings2 className="mr-2 size-4" />Mettre en préparation</Button><Button disabled={busy !== ""} onClick={() => void runAction("start", () => sessionsApi.start(session.id))}><Play className="mr-2 size-4" />Démarrer</Button></SessionPermissionGuard>}
       {p && session.statut === "en_preparation" && <SessionPermissionGuard permission={P.UPDATE}><Button variant="outline" disabled={busy !== ""} onClick={() => void runAction("open", () => sessionsApi.open(session.id))}><CalendarDays className="mr-2 size-4" />Ouvrir</Button><Button disabled={busy !== ""} onClick={() => void runAction("start", () => sessionsApi.start(session.id))}><Play className="mr-2 size-4" />Démarrer</Button></SessionPermissionGuard>}
       {session.statut === "en_cours" && <SessionPermissionGuard permission={P.CLOSE}><Button disabled={busy !== ""} onClick={() => void runAction("finish", () => sessionsApi.finish(session.id))}><CheckCircle2 className="mr-2 size-4" />Vérifier et terminer</Button></SessionPermissionGuard>}
       {session.statut === "terminee" && <SessionPermissionGuard permission={P.ARCHIVE}><Button disabled={busy !== ""} onClick={() => void runAction("archive", () => sessionsApi.archive(session.id))}><Archive className="mr-2 size-4" />Archiver</Button></SessionPermissionGuard>}
       {canCancel && <SessionPermissionGuard permission={P.UPDATE}><Dialog open={cancelOpen} onOpenChange={setCancelOpen}><DialogTrigger render={<Button variant="destructive"><XCircle className="mr-2 size-4" />Annuler la session</Button>} /><DialogContent><DialogHeader><DialogTitle>Annuler cette session</DialogTitle><DialogDescription>La session restera visible dans l’historique. Le motif est obligatoire.</DialogDescription></DialogHeader><div className="space-y-2"><Label>Motif de l’annulation</Label><textarea className={textAreaClass} rows={5} value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} placeholder="Ex. Décision officielle de report de la session." /></div><DialogFooter><Button variant="outline" onClick={() => setCancelOpen(false)}>Retour</Button><Button variant="destructive" disabled={!cancelReason.trim() || busy !== ""} onClick={() => void runAction("cancel", async () => { await sessionsApi.cancel(session.id, cancelReason); setCancelOpen(false) })}>Confirmer l’annulation</Button></DialogFooter></DialogContent></Dialog></SessionPermissionGuard>}
-      {p && session.statut === "brouillon" && <SessionPermissionGuard permission={P.ARCHIVE}><Button variant="ghost" className="text-destructive" disabled={busy !== ""} onClick={() => { if (window.confirm("Supprimer logiquement cette session créée par erreur ?")) void runAction("delete", async () => { await sessionsApi.remove(session.id); navigate("/app/sessions") }) }}><Trash2 className="mr-2 size-4" />Supprimer</Button></SessionPermissionGuard>}
+      {p && session.statut === "brouillon" && <SessionPermissionGuard permission={P.ARCHIVE}><Button variant="ghost" className="text-destructive" disabled={busy !== ""} onClick={() => { if (window.confirm("Supprimer cette session créée par erreur ?")) void runAction("delete", async () => { await sessionsApi.remove(session.id); navigate("/app/sessions") }) }}><Trash2 className="mr-2 size-4" />Supprimer</Button></SessionPermissionGuard>}
     </div>}
 
     <section className={`mt-8 grid gap-6 xl:grid-cols-2 ${isDgas ? "" : ""}`}>

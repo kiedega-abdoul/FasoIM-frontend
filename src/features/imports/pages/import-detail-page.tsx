@@ -26,6 +26,10 @@ import {
 import { ErrorBox, Loading, PageHeader } from "@/features/accounts/components"
 
 import { importsApi } from "../api"
+import {
+  isBackgroundImportTracked,
+  trackBackgroundImport,
+} from "../background-import-tracking"
 import { ImportPermissionGuard, ImportStatusBadge } from "../components"
 import { formatBytes, formatDate, SOURCE_LABELS } from "../labels"
 import { IMPORT_PERMISSIONS as P } from "../permissions"
@@ -69,7 +73,11 @@ export function ImportDetailPage() {
   }, [load])
 
   useEffect(() => {
-    if (!item || !activeStatuses.has(item.statut)) return
+    if (
+      !item ||
+      (!activeStatuses.has(item.statut) &&
+        !isBackgroundImportTracked(importId))
+    ) return
 
     const timer = window.setInterval(async () => {
       try {
@@ -139,6 +147,7 @@ export function ImportDetailPage() {
 
     try {
       await importsApi.confirm(importId)
+      trackBackgroundImport(importId)
 
       setItem((current) =>
         current
@@ -533,9 +542,8 @@ export function ImportDetailPage() {
           <DialogHeader>
             <DialogTitle>Supprimer cet import</DialogTitle>
             <DialogDescription>
-              Cette action supprimera logiquement l’import et ses données
-              préparatoires. Elle reste interdite si des immergés ont déjà été
-              créés.
+              Cet import et ses données préparatoires ne seront plus disponibles.
+              La suppression reste impossible si des immergés ont déjà été créés.
             </DialogDescription>
           </DialogHeader>
 

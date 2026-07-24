@@ -99,10 +99,31 @@ export type CenterOrganizationPayload = {
   directives_locales: string
 }
 
+export type StructureTargetGroup = {
+  ordre: number
+  effectif_cible: number
+  capacite_max: number
+}
+
+export type StructureTargetSection = {
+  ordre: number
+  effectif_cible: number
+  capacite_max: number
+  groupes: StructureTargetGroup[]
+}
+
+export type StructurePlan = {
+  effectif_total: number
+  nombre_sections: number
+  nombre_groupes: number
+  sections: StructureTargetSection[]
+}
+
 export type CenterOrganizationSummary = {
   total_affectations_centre: number
   sections: number
   groupes: number
+  plan_structures: StructurePlan
   candidats_groupes: number
   affectations_groupes_actives: number
   propositions_groupes: number

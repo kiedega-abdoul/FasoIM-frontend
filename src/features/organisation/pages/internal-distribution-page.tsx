@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { BedDouble, Building2, CheckCircle2, Layers3, LoaderCircle, RefreshCw, Users } from "lucide-react"
+import { BedDouble, Building2, CheckCircle2, Layers3, LoaderCircle, RefreshCw, Search, Users, XCircle } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { getApiErrorMessage } from "@/api/api-error"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { currentScopeParams } from "@/features/affectations/scope"
 import { EmptyState, ErrorBox, Loading, PageHeader, StatusBadge } from "@/features/accounts/components"
 import { useAuthStore } from "@/stores/auth-store"
@@ -16,6 +17,8 @@ type Tab = "structures" | "groupes" | "hebergement"
 
 const OPEN_STATUSES = new Set(["PROPOSEE", "PROPOSE", "PROPOSED"])
 const ACTIVE_STATUSES = new Set(["ACTIVE", "ACTIF", "VALIDEE", "VALIDE"])
+const REJECTED_STATUSES = new Set(["REJETEE", "REJETE", "REJECTED"])
+const CANCELLED_STATUSES = new Set(["ANNULEE", "ANNULE", "CANCELLED"])
 
 function isProposed(status: string) {
   return OPEN_STATUSES.has(status.toUpperCase())
@@ -23,6 +26,16 @@ function isProposed(status: string) {
 
 function isActive(status: string) {
   return ACTIVE_STATUSES.has(status.toUpperCase())
+}
+
+function matchesStatusFilter(status: string, filter: string) {
+  if (filter === "TOUS") return true
+  const normalized = status.toUpperCase()
+  if (filter === "PROPOSEE") return OPEN_STATUSES.has(normalized)
+  if (filter === "VALIDEE") return ACTIVE_STATUSES.has(normalized)
+  if (filter === "REJETEE") return REJECTED_STATUSES.has(normalized)
+  if (filter === "ANNULEE") return CANCELLED_STATUSES.has(normalized)
+  return normalized === filter
 }
 
 export function InternalDistributionPage() {
@@ -44,14 +57,41 @@ export function InternalDistributionPage() {
   const [error, setError] = useState("")
   const [info, setInfo] = useState("")
   const [progress, setProgress] = useState<OrganizationProgress | null>(null)
+  const [groupProposalCount, setGroupProposalCount] = useState(100)
+  const [bedProposalCount, setBedProposalCount] = useState(100)
+  const [groupSearch, setGroupSearch] = useState("")
+  const [groupStatus, setGroupStatus] = useState("PROPOSEE")
+  const [bedSearch, setBedSearch] = useState("")
+  const [bedStatus, setBedStatus] = useState("PROPOSEE")
 
   const canGenerate = permissions.includes(P.GENERATE_STRUCTURES)
   const canAssignGroups = permissions.includes(P.ASSIGN_GROUP)
   const canProposeBeds = permissions.includes(P.PROPOSE_BED)
   const canAssignBeds = permissions.includes(P.ASSIGN_BED)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const refreshSummary = useCallback(async (ruleId: number) => {
+    setSummary(await organisationApi.centerRuleSummary(ruleId))
+  }, [])
+
+  const refreshStructures = useCallback(async () => {
+    const [sectionRows, groupRows] = await Promise.all([
+      organisationApi.sections({ session_id: sessionId, centre_id: centerId }),
+      organisationApi.groups({ session_id: sessionId, centre_id: centerId }),
+    ])
+    setSections(sectionRows)
+    setGroups(groupRows)
+  }, [centerId, sessionId])
+
+  const refreshGroupAssignments = useCallback(async () => {
+    setGroupAssignments(await organisationApi.groupAssignments({ session_id: sessionId, centre_id: centerId }))
+  }, [centerId, sessionId])
+
+  const refreshBedAssignments = useCallback(async () => {
+    setBedAssignments(await organisationApi.bedAssignments({ session_id: sessionId, centre_id: centerId }))
+  }, [centerId, sessionId])
+
+  const load = useCallback(async (showInitialLoader = false) => {
+    if (showInitialLoader) setLoading(true)
     setError("")
     try {
       if (!sessionId || !centerId) return
@@ -66,30 +106,29 @@ export function InternalDistributionPage() {
         setBedAssignments([])
         return
       }
-      const [currentSummary, sectionRows, groupRows, groupAssignmentRows] = await Promise.all([
+      const [currentSummary, sectionRows, groupRows, groupAssignmentRows, bedAssignmentRows] = await Promise.all([
         organisationApi.centerRuleSummary(currentRule.id),
         organisationApi.sections({ session_id: sessionId, centre_id: centerId }),
         organisationApi.groups({ session_id: sessionId, centre_id: centerId }),
         organisationApi.groupAssignments({ session_id: sessionId, centre_id: centerId }),
+        currentRule.hebergement_active
+          ? organisationApi.bedAssignments({ session_id: sessionId, centre_id: centerId })
+          : Promise.resolve([] as BedAssignment[]),
       ])
       setSummary(currentSummary)
       setSections(sectionRows)
       setGroups(groupRows)
       setGroupAssignments(groupAssignmentRows)
-      if (currentRule.hebergement_active) {
-        setBedAssignments(await organisationApi.bedAssignments({ session_id: sessionId, centre_id: centerId }))
-      } else {
-        setBedAssignments([])
-      }
+      setBedAssignments(bedAssignmentRows)
     } catch (exception) {
       setError(getApiErrorMessage(exception))
     } finally {
-      setLoading(false)
+      if (showInitialLoader) setLoading(false)
     }
   }, [centerId, sessionId])
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => { void load() }, 0)
+    const timeoutId = window.setTimeout(() => { void load(true) }, 0)
     return () => window.clearTimeout(timeoutId)
   }, [load])
 
@@ -97,6 +136,7 @@ export function InternalDistributionPage() {
     taskId: string,
     reader: (id: string) => Promise<OrganizationProgress>,
     successMessage: string,
+    refreshAfterSuccess: () => Promise<void>,
   ) {
     for (let attempt = 0; attempt < 120; attempt += 1) {
       const current = await reader(taskId)
@@ -104,7 +144,8 @@ export function InternalDistributionPage() {
       const status = current.statut.toUpperCase()
       if (["SUCCESS", "SUCCES", "TERMINEE", "TERMINE"].includes(status)) {
         setInfo(successMessage)
-        await load()
+        setProgress(null)
+        await refreshAfterSuccess()
         return
       }
       if (["FAILURE", "ECHEC", "ERREUR"].includes(status)) {
@@ -115,19 +156,33 @@ export function InternalDistributionPage() {
     throw new Error("Le traitement prend plus de temps que prévu. Revenez dans quelques instants pour consulter son avancement.")
   }
 
-  async function runTask(action: () => Promise<{ task_id: string }>, reader: (id: string) => Promise<OrganizationProgress>, message: string) {
+  async function runTask(
+    action: () => Promise<{ task_id: string }>,
+    reader: (id: string) => Promise<OrganizationProgress>,
+    message: string,
+    refreshAfterSuccess: () => Promise<void>,
+  ) {
     setWorking(true)
     setError("")
     setInfo("")
     setProgress(null)
     try {
       const launched = await action()
-      await waitForTask(launched.task_id, reader, message)
+      await waitForTask(launched.task_id, reader, message, refreshAfterSuccess)
     } catch (exception) {
       setError(getApiErrorMessage(exception))
+      setProgress(null)
     } finally {
       setWorking(false)
     }
+  }
+
+  const maxGroupProposalCount = Math.min(5000, summary?.candidats_groupes ?? 0)
+  const maxBedProposalCount = Math.min(5000, summary?.candidats_lits ?? 0, summary?.lits_utilisables ?? 0)
+
+  function normalizedProposalCount(value: number, maximum: number) {
+    if (maximum <= 0) return 0
+    return Math.max(1, Math.min(maximum, Math.trunc(value || 1)))
   }
 
   const proposedGroups = useMemo(() => groupAssignments.filter((item) => isProposed(item.statut)), [groupAssignments])
@@ -135,10 +190,40 @@ export function InternalDistributionPage() {
   const proposedBeds = useMemo(() => bedAssignments.filter((item) => isProposed(item.statut)), [bedAssignments])
   const activeBeds = useMemo(() => bedAssignments.filter((item) => isActive(item.statut)), [bedAssignments])
 
-  const groupedStructures = useMemo(() => sections.map((section) => ({
+
+  const filteredGroupAssignments = useMemo(() => {
+    const query = groupSearch.trim().toLowerCase()
+    return groupAssignments.filter((item) => {
+      const statusMatches = matchesStatusFilter(item.statut, groupStatus)
+      const text = [
+        item.affectation_centre.code_fasoim,
+        item.groupe.section.nom,
+        item.groupe.nom,
+        item.statut,
+      ].filter(Boolean).join(" ").toLowerCase()
+      return statusMatches && (!query || text.includes(query))
+    })
+  }, [groupAssignments, groupSearch, groupStatus])
+
+  const filteredBedAssignments = useMemo(() => {
+    const query = bedSearch.trim().toLowerCase()
+    return bedAssignments.filter((item) => {
+      const statusMatches = matchesStatusFilter(item.statut, bedStatus)
+      const text = [
+        item.affectation_centre.code_fasoim,
+        item.lit.dortoir.nom,
+        item.lit.numero_lit,
+        item.statut,
+      ].filter(Boolean).join(" ").toLowerCase()
+      return statusMatches && (!query || text.includes(query))
+    })
+  }, [bedAssignments, bedSearch, bedStatus])
+
+  const groupedStructures = useMemo(() => sections.map((section, sectionIndex) => ({
     section,
+    target: summary?.plan_structures.sections[sectionIndex],
     groups: groups.filter((group) => group.section.id === section.id),
-  })), [sections, groups])
+  })), [sections, groups, summary?.plan_structures.sections])
 
   if (loading) return <Loading />
 
@@ -159,7 +244,7 @@ export function InternalDistributionPage() {
     {error && <ErrorBox message={error} />}
     {info && <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm text-primary">{info}</div>}
 
-    {!rule ? <EmptyState message="Configurez d’abord l’organisation du centre avant de lancer la répartition interne." /> : <>
+    {!rule ? <EmptyState message="Définissez d’abord l’organisation du centre avant de lancer la répartition interne des sections et des groupes." /> : <>
       <Card className="overflow-hidden border-primary/15 bg-gradient-to-br from-card to-primary/5">
         <CardContent className="grid gap-4 p-6 sm:grid-cols-2 xl:grid-cols-6">
           {[
@@ -208,20 +293,26 @@ export function InternalDistributionPage() {
               () => organisationApi.generateCenterStructures(rule.id),
               organisationApi.centerRuleProgress,
               "Sections et groupes créés.",
+              async () => { await Promise.all([refreshSummary(rule.id), refreshStructures()]) },
             )}
           >{working ? <LoaderCircle className="mr-2 size-4 animate-spin" /> : <Layers3 className="mr-2 size-4" />}Générer les structures</Button>
         </CardContent></Card>
 
         {groupedStructures.length === 0 ? <EmptyState message="Aucune section ni aucun groupe n’a encore été créé." /> : <div className="grid gap-4 lg:grid-cols-2">
-          {groupedStructures.map(({ section, groups: sectionGroups }) => <Card key={section.id}><CardContent className="p-5">
+          {groupedStructures.map(({ section, target, groups: sectionGroups }) => <Card key={section.id}><CardContent className="p-5">
             <div className="flex items-start justify-between gap-4">
-              <div><p className="text-lg font-bold">{section.nom}</p><p className="text-sm text-muted-foreground">Capacité maximale : {section.capacite_max}</p></div>
+              <div>
+                <p className="text-lg font-bold">{section.nom}</p>
+                <p className="text-sm text-muted-foreground">Effectif cible : {target?.effectif_cible ?? "—"}</p>
+                <p className="text-sm text-muted-foreground">Capacité maximale : {section.capacite_max}</p>
+              </div>
               <StatusBadge value={section.statut.toLowerCase()} />
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              {sectionGroups.map((group) => <div key={group.id} className="rounded-xl border bg-muted/20 p-3">
+              {sectionGroups.map((group, groupIndex) => <div key={group.id} className="rounded-xl border bg-muted/20 p-3">
                 <p className="font-semibold">{group.nom}</p>
-                <p className="text-sm text-muted-foreground">Capacité : {group.capacite_max}</p>
+                <p className="text-sm text-muted-foreground">Effectif cible : {target?.groupes[groupIndex]?.effectif_cible ?? "—"}</p>
+                <p className="text-sm text-muted-foreground">Capacité maximale : {group.capacite_max}</p>
               </div>)}
             </div>
           </CardContent></Card>)}
@@ -233,26 +324,73 @@ export function InternalDistributionPage() {
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary">Étape 2</p>
             <h2 className="mt-1 text-2xl font-bold">Répartir les immergés dans les groupes</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Le système prépare une proposition équilibrée que vous contrôlez avant validation.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Une proposition équilibrée est préparée pour que vous puissiez la contrôler avant validation.</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" disabled={working || !canAssignGroups || groups.length === 0 || (summary?.candidats_groupes ?? 0) === 0} onClick={() => void runTask(
-              () => organisationApi.proposeGroupAssignments(sessionId, centerId),
-              organisationApi.groupAssignmentProgress,
-              "Propositions de groupes générées.",
-            )}><RefreshCw className="mr-2 size-4" />Proposer la répartition</Button>
-            <Button disabled={working || !canAssignGroups || proposedGroups.length === 0} onClick={() => void runTask(
-              () => organisationApi.validateGroupAssignments(proposedGroups.map((item) => item.id)),
-              organisationApi.groupAssignmentProgress,
-              "Répartition des groupes validée.",
-            )}><CheckCircle2 className="mr-2 size-4" />Valider les propositions ({proposedGroups.length})</Button>
+          <div className="flex min-w-0 flex-col gap-3 lg:items-end">
+            <div className="flex flex-wrap items-center gap-2">
+              {[100, 250, 500, 1000].filter((value) => value <= maxGroupProposalCount).map((value) => (
+                <Button key={value} type="button" size="sm" variant={groupProposalCount === value ? "default" : "outline"} onClick={() => setGroupProposalCount(value)}>{value}</Button>
+              ))}
+              {maxGroupProposalCount > 0 && <Button type="button" size="sm" variant={groupProposalCount === maxGroupProposalCount ? "default" : "outline"} onClick={() => setGroupProposalCount(maxGroupProposalCount)}>Tout le disponible ({maxGroupProposalCount})</Button>}
+            </div>
+            <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+              <Input
+                className="h-10 min-w-40"
+                type="number"
+                min={1}
+                max={maxGroupProposalCount || 1}
+                value={groupProposalCount}
+                disabled={working || maxGroupProposalCount === 0}
+                onChange={(event) => setGroupProposalCount(Number(event.target.value))}
+                onBlur={() => setGroupProposalCount(normalizedProposalCount(groupProposalCount, maxGroupProposalCount))}
+                aria-label="Nombre d’immergés à proposer dans les groupes"
+              />
+              <Button variant="outline" disabled={working || !canAssignGroups || groups.length === 0 || maxGroupProposalCount === 0} onClick={() => void runTask(
+                () => organisationApi.proposeGroupAssignments(sessionId, centerId, normalizedProposalCount(groupProposalCount, maxGroupProposalCount)),
+                organisationApi.groupAssignmentProgress,
+                "Propositions de groupes générées.",
+                async () => { if (rule) await Promise.all([refreshSummary(rule.id), refreshGroupAssignments()]) },
+              )}><RefreshCw className="mr-2 size-4" />Proposer {normalizedProposalCount(groupProposalCount, maxGroupProposalCount)} affectation(s)</Button>
+              <Button disabled={working || !canAssignGroups || proposedGroups.length === 0} onClick={() => void runTask(
+                () => organisationApi.validateGroupAssignments(proposedGroups.map((item) => item.id)),
+                organisationApi.groupAssignmentProgress,
+                "Répartition des groupes validée.",
+                async () => { if (rule) await Promise.all([refreshSummary(rule.id), refreshGroupAssignments()]) },
+              )}><CheckCircle2 className="mr-2 size-4" />Valider les propositions ({proposedGroups.length})</Button>
+              <Button variant="destructive" disabled={working || !canAssignGroups || proposedGroups.length === 0} onClick={() => void runTask(
+                () => organisationApi.rejectGroupAssignments(proposedGroups.map((item) => item.id)),
+                organisationApi.groupAssignmentProgress,
+                "Propositions de groupes rejetées.",
+                async () => { if (rule) await Promise.all([refreshSummary(rule.id), refreshGroupAssignments()]) },
+              )}><XCircle className="mr-2 size-4" />Rejeter ({proposedGroups.length})</Button>
+            </div>
           </div>
         </CardContent></Card>
 
-        {groupAssignments.length === 0 ? <EmptyState message="Aucune proposition de groupe n’est disponible." /> : <Card><CardContent className="overflow-x-auto p-0">
+        {groupAssignments.length > 0 && <Card><CardContent className="flex flex-col gap-3 p-4">
+          <div className="relative w-full md:max-w-2xl">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input className="pl-9" value={groupSearch} onChange={(event) => setGroupSearch(event.target.value)} placeholder="Rechercher par Code FasoIM, section ou groupe" />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold">Statut :</span>
+            {[
+              ["TOUS", "Toutes"],
+              ["PROPOSEE", "Proposées"],
+              ["VALIDEE", "Validées"],
+              ["REJETEE", "Rejetées"],
+              ["ANNULEE", "Annulées"],
+            ].map(([value, label]) => (
+              <Button key={value} type="button" size="sm" variant={groupStatus === value ? "default" : "outline"} onClick={() => setGroupStatus(value)}>{label}</Button>
+            ))}
+            <Button type="button" size="sm" variant="outline" onClick={() => { setGroupSearch(""); setGroupStatus("PROPOSEE") }}>Réinitialiser</Button>
+          </div>
+        </CardContent></Card>}
+
+        {groupAssignments.length === 0 ? <EmptyState message="Aucune proposition de groupe n’est disponible." /> : filteredGroupAssignments.length === 0 ? <EmptyState message="Aucune proposition de groupe ne correspond aux filtres actuels." /> : <Card><CardContent className="overflow-x-auto p-0">
           <table className="w-full min-w-[760px] text-sm">
             <thead className="border-b bg-muted/30 text-left"><tr><th className="px-5 py-4">Code FasoIM</th><th className="px-5 py-4">Section</th><th className="px-5 py-4">Groupe</th><th className="px-5 py-4">Statut</th></tr></thead>
-            <tbody>{groupAssignments.map((item) => <tr key={item.id} className="border-b last:border-0"><td className="px-5 py-4 font-medium">{item.affectation_centre.code_fasoim || `Immergé #${item.affectation_centre.immerge_id}`}</td><td className="px-5 py-4">{item.groupe.section.nom}</td><td className="px-5 py-4">{item.groupe.nom}</td><td className="px-5 py-4"><StatusBadge value={item.statut.toLowerCase()} /></td></tr>)}</tbody>
+            <tbody>{filteredGroupAssignments.map((item) => <tr key={item.id} className="border-b last:border-0"><td className="px-5 py-4 font-medium">{item.affectation_centre.code_fasoim || `Immergé #${item.affectation_centre.immerge_id}`}</td><td className="px-5 py-4">{item.groupe.section.nom}</td><td className="px-5 py-4">{item.groupe.nom}</td><td className="px-5 py-4"><StatusBadge value={item.statut.toLowerCase()} /></td></tr>)}</tbody>
           </table>
         </CardContent></Card>}
       </div>}
@@ -265,24 +403,71 @@ export function InternalDistributionPage() {
             <p className="mt-1 text-sm text-muted-foreground">Les propositions respectent le sexe des dortoirs et la disponibilité réelle des lits.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button render={<Link to="/app/dortoirs" />} variant="outline">Gérer les dortoirs</Button>
+            <Button render={<Link to="/app/dortoirs/nouveau" />}>Créer un dortoir</Button>
+            <Button render={<Link to="/app/dortoirs" />} variant="outline">Gérer les dortoirs et générer les lits</Button>
             <Button render={<Link to="/app/lits" />} variant="outline">Gérer les lits</Button>
-            <Button variant="outline" disabled={working || !canProposeBeds || (summary?.candidats_lits ?? 0) === 0 || (summary?.lits_utilisables ?? 0) === 0} onClick={() => void runTask(
-              () => organisationApi.proposeBedAssignments(sessionId, centerId),
-              organisationApi.bedAssignmentProgress,
-              "Propositions de lits générées.",
-            )}>Proposer les lits</Button>
+            {maxBedProposalCount > 0 && <>
+              <Input
+                className="h-10 w-32"
+                type="number"
+                min={1}
+                max={maxBedProposalCount}
+                value={bedProposalCount}
+                disabled={working}
+                onChange={(event) => setBedProposalCount(Number(event.target.value))}
+                onBlur={() => setBedProposalCount(normalizedProposalCount(bedProposalCount, maxBedProposalCount))}
+                aria-label="Nombre de lits à proposer"
+              />
+              <Button variant="outline" disabled={working || !canProposeBeds} onClick={() => void runTask(
+                () => organisationApi.proposeBedAssignments(sessionId, centerId, normalizedProposalCount(bedProposalCount, maxBedProposalCount)),
+                organisationApi.bedAssignmentProgress,
+                "Propositions de lits générées.",
+                async () => { if (rule) await Promise.all([refreshSummary(rule.id), refreshBedAssignments()]) },
+              )}>Proposer {normalizedProposalCount(bedProposalCount, maxBedProposalCount)} lit(s)</Button>
+            </>}
             <Button disabled={working || !canAssignBeds || proposedBeds.length === 0} onClick={() => void runTask(
               () => organisationApi.validateBedAssignments(proposedBeds.map((item) => item.id)),
               organisationApi.bedAssignmentProgress,
               "Attributions de lits validées.",
+              async () => { if (rule) await Promise.all([refreshSummary(rule.id), refreshBedAssignments()]) },
             )}>Valider les propositions ({proposedBeds.length})</Button>
+            <Button variant="destructive" disabled={working || !canAssignBeds || proposedBeds.length === 0} onClick={() => void runTask(
+              () => organisationApi.rejectBedAssignments(proposedBeds.map((item) => item.id)),
+              organisationApi.bedAssignmentProgress,
+              "Propositions de lits rejetées.",
+              async () => { if (rule) await Promise.all([refreshSummary(rule.id), refreshBedAssignments()]) },
+            )}><XCircle className="mr-2 size-4" />Rejeter ({proposedBeds.length})</Button>
           </div>
         </CardContent></Card>
 
-        {bedAssignments.length === 0 ? <EmptyState message="Aucune proposition de lit n’est disponible." /> : <Card><CardContent className="overflow-x-auto p-0">
+        {bedAssignments.length > 0 && <Card><CardContent className="flex flex-col gap-3 p-4">
+          <div className="relative w-full md:max-w-2xl">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input className="pl-9" value={bedSearch} onChange={(event) => setBedSearch(event.target.value)} placeholder="Rechercher par Code FasoIM, dortoir ou lit" />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold">Statut :</span>
+            {[
+              ["TOUS", "Toutes"],
+              ["PROPOSEE", "Proposées"],
+              ["VALIDEE", "Validées"],
+              ["REJETEE", "Rejetées"],
+              ["ANNULEE", "Annulées"],
+            ].map(([value, label]) => (
+              <Button key={value} type="button" size="sm" variant={bedStatus === value ? "default" : "outline"} onClick={() => setBedStatus(value)}>{label}</Button>
+            ))}
+            <Button type="button" size="sm" variant="outline" onClick={() => { setBedSearch(""); setBedStatus("PROPOSEE") }}>Réinitialiser</Button>
+          </div>
+        </CardContent></Card>}
+
+        {(summary?.total_affectations_centre ?? 0) === 0 && <EmptyState message="Aucun immergé n’est encore affecté à ce centre pour cette session. Vous pouvez continuer à créer des dortoirs et à générer leurs lits." />}
+        {(summary?.total_affectations_centre ?? 0) > 0 && (summary?.candidats_lits ?? 0) === 0 && <EmptyState message="Tous les immergés de ce centre disposent déjà d’un lit. Aucune nouvelle attribution n’est nécessaire." />}
+        {(summary?.candidats_lits ?? 0) > 0 && (summary?.lits_utilisables ?? 0) === 0 && <EmptyState message="Des immergés attendent un lit, mais aucun lit utilisable n’est disponible. Créez un dortoir ou générez les lits manquants." />}
+        {bedAssignments.length === 0 && (summary?.candidats_lits ?? 0) > 0 && (summary?.lits_utilisables ?? 0) > 0 && <EmptyState message="Aucune proposition de lit n’est encore disponible." />}
+        {bedAssignments.length > 0 && filteredBedAssignments.length === 0 && <EmptyState message="Aucune proposition de lit ne correspond aux filtres actuels." />}
+        {filteredBedAssignments.length > 0 && <Card><CardContent className="overflow-x-auto p-0">
           <table className="w-full min-w-[820px] text-sm"><thead className="border-b bg-muted/30 text-left"><tr><th className="px-5 py-4">Code FasoIM</th><th className="px-5 py-4">Dortoir</th><th className="px-5 py-4">Lit</th><th className="px-5 py-4">Statut</th></tr></thead>
-          <tbody>{bedAssignments.map((item) => <tr key={item.id} className="border-b last:border-0"><td className="px-5 py-4 font-medium">{item.affectation_centre.code_fasoim || `Immergé #${item.affectation_centre.immerge_id}`}</td><td className="px-5 py-4">{item.lit.dortoir.nom}</td><td className="px-5 py-4">{item.lit.numero_lit}</td><td className="px-5 py-4"><StatusBadge value={item.statut.toLowerCase()} /></td></tr>)}</tbody></table>
+          <tbody>{filteredBedAssignments.map((item) => <tr key={item.id} className="border-b last:border-0"><td className="px-5 py-4 font-medium">{item.affectation_centre.code_fasoim || `Immergé #${item.affectation_centre.immerge_id}`}</td><td className="px-5 py-4">{item.lit.dortoir.nom}</td><td className="px-5 py-4">{item.lit.numero_lit}</td><td className="px-5 py-4"><StatusBadge value={item.statut.toLowerCase()} /></td></tr>)}</tbody></table>
         </CardContent></Card>}
       </div>}
 

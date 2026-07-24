@@ -14,6 +14,7 @@ import { AdministrationDashboard } from "@/workspaces/administration/dashboard"
 import { DgasDashboard } from "@/workspaces/dgas/dashboard"
 import { RegionalDirectionDashboard } from "@/workspaces/direction-regionale/dashboard"
 import { CenterManagerDashboard } from "@/workspaces/responsable-centre/dashboard"
+import { TrainerDashboard } from "@/workspaces/formateur/dashboard"
 import { resolveWorkspace } from "@/workspaces/workspace-resolver"
 
 const roleMessages: Record<string, { title: string; description: string }> = {
@@ -76,6 +77,10 @@ export function DashboardPage() {
   if (workspace === "RESPONSABLE_CENTRE") {
     return <CenterManagerDashboard />
   }
+
+  if (workspace === "FORMATEUR") {
+    return <TrainerDashboard />
+  }
   const primaryRole = assignment?.roles[0]
   const permissions = assignment?.permissions ?? []
   const message = roleMessages[primaryRole?.code ?? ""] ?? { title: "Bienvenue dans votre espace FasoIM", description: "Retrouvez les opérations disponibles dans votre contexte de travail actuel." }
@@ -116,7 +121,7 @@ export function DashboardPage() {
               <MapPinned className="size-6" />
             </span>
             <div className="min-w-0">
-              <p className="text-sm text-muted-foreground">Périmètre</p>
+              <p className="text-sm text-muted-foreground">Zone de travail</p>
               <p className="mt-1 truncate text-lg font-semibold capitalize">
                 {assignment.niveau_affectation}
               </p>

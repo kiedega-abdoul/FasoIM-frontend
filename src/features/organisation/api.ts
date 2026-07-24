@@ -19,11 +19,14 @@ export const organisationApi = {
   async groupAssignments(params?: Record<string, string | number | undefined>) {
     return list((await httpClient.get<ListResponse<GroupAssignment>>("/organisation/affectations-groupes/", { params: withScope(params) })).data)
   },
-  async proposeGroupAssignments(sessionId: number, centerId: number) {
-    return (await httpClient.post<OrganizationTaskLaunch>("/organisation/affectations-groupes/proposer-lot/", { session_id: sessionId, centre_id: centerId }, { params: withScope() })).data
+  async proposeGroupAssignments(sessionId: number, centerId: number, nombre: number) {
+    return (await httpClient.post<OrganizationTaskLaunch>("/organisation/affectations-groupes/proposer-lot/", { session_id: sessionId, centre_id: centerId, nombre }, { params: withScope() })).data
   },
   async validateGroupAssignments(ids: number[]) {
     return (await httpClient.post<OrganizationTaskLaunch>("/organisation/affectations-groupes/valider-lot/", { ids }, { params: withScope() })).data
+  },
+  async rejectGroupAssignments(ids: number[]) {
+    return (await httpClient.post<OrganizationTaskLaunch>("/organisation/affectations-groupes/rejeter-lot/", { ids }, { params: withScope() })).data
   },
   async groupAssignmentProgress(taskId: string) {
     return (await httpClient.get<OrganizationProgress>(`/organisation/affectations-groupes/progression/${taskId}/`, { params: withScope() })).data
@@ -31,11 +34,14 @@ export const organisationApi = {
   async bedAssignments(params?: Record<string, string | number | undefined>) {
     return list((await httpClient.get<ListResponse<BedAssignment>>("/organisation/attributions-lits/", { params: withScope(params) })).data)
   },
-  async proposeBedAssignments(sessionId: number, centerId: number) {
-    return (await httpClient.post<OrganizationTaskLaunch>("/organisation/attributions-lits/proposer-lot/", { session_id: sessionId, centre_id: centerId }, { params: withScope() })).data
+  async proposeBedAssignments(sessionId: number, centerId: number, nombre: number) {
+    return (await httpClient.post<OrganizationTaskLaunch>("/organisation/attributions-lits/proposer-lot/", { session_id: sessionId, centre_id: centerId, nombre }, { params: withScope() })).data
   },
   async validateBedAssignments(ids: number[]) {
     return (await httpClient.post<OrganizationTaskLaunch>("/organisation/attributions-lits/valider-lot/", { ids }, { params: withScope() })).data
+  },
+  async rejectBedAssignments(ids: number[]) {
+    return (await httpClient.post<OrganizationTaskLaunch>("/organisation/attributions-lits/rejeter-lot/", { ids }, { params: withScope() })).data
   },
   async bedAssignmentProgress(taskId: string) {
     return (await httpClient.get<OrganizationProgress>(`/organisation/attributions-lits/progression/${taskId}/`, { params: withScope() })).data

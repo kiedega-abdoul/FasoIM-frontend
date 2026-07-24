@@ -119,7 +119,7 @@ export function ImmergesListPage() {
         <p className="mt-2 text-muted-foreground">
           {assignment?.session?.nom
             ? `Consultez uniquement les immergés de ${assignment.session.nom}.`
-            : "Consultez les immergés dans le périmètre de votre affectation."}
+            : "Consultez les immergés dans la zone couverte par votre affectation."}
         </p>
       </div>
 

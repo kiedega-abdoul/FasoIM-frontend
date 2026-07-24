@@ -39,7 +39,9 @@ export type AffectationContexte = {
   est_par_defaut: boolean
   niveau_affectation: string
   region_code: string
+  region_nom: string
   centre_id: number | null
+  centre_nom: string
   date_debut: string
   date_fin: string | null
   statut: string

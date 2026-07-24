@@ -1,6 +1,6 @@
 import { httpClient } from "@/api/http-client"
 import { assignmentContextService } from "@/services/assignment-context-service"
-import type { ImmersionSession, ListResponse, PublicSession, SessionParameters, SessionParametersPayload, SessionPayload } from "./types"
+import type { ImmersionSession, ListResponse, ArrivalConsultationSession, PublicSession, SessionParameters, SessionParametersPayload, SessionPayload } from "./types"
 
 const list = <T>(data: ListResponse<T>) => Array.isArray(data) ? data : data.results
 
@@ -45,6 +45,10 @@ export const sessionsApi = {
   },
   async publicOpenSessions() {
     const response = await httpClient.get<ListResponse<PublicSession>>("/sessions/public/ouvertes-inscription/")
+    return list(response.data)
+  },
+  async publicArrivalSessions() {
+    const response = await httpClient.get<ListResponse<ArrivalConsultationSession>>("/sessions/public/consultables-arrivee/")
     return list(response.data)
   },
 }

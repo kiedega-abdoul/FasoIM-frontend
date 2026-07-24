@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { ArrowRight, BedDouble, Building2, DoorOpen, ListChecks, MapPinned } from "lucide-react"

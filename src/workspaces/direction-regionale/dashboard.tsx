@@ -20,11 +20,11 @@ const modules = [
   },
   {
     label: "Gestion des attestations",
-    description: "Contrôler, générer et signer les attestations de la région après la finalisation des centres.",
-    href: null,
-    permissions: [],
+    description: "Vérifier les résultats transmis par les centres, puis valider, signer et publier les attestations.",
+    href: "/app/directeur-regional/attestations",
+    permissions: ["consulter_publications"],
     icon: FileCheck2,
-    disponible: false,
+    disponible: true,
   },
 ] as const
 
@@ -55,8 +55,7 @@ export function RegionalDirectionDashboard() {
 
   const visibleModules = useMemo(
     () => modules.filter(
-      (module) => module.permissions.length === 0
-        || module.permissions.some((permission) => permissions.includes(permission)),
+      (module) => module.permissions.some((permission) => permissions.includes(permission)),
     ),
     [permissions],
   )

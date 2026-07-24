@@ -5,6 +5,7 @@ import { Brand } from "@/components/common/brand"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useAuthStore } from "@/stores/auth-store"
+import { BackgroundImportTracker } from "@/features/imports/background-import-tracker"
 import { getWorkspaceNavigation } from "@/workspaces/workspace-navigation"
 
 export function AppLayout() {
@@ -41,6 +42,8 @@ export function AppLayout() {
           </div>
         </div>
       </header>
+
+      <BackgroundImportTracker />
 
       <div className="mx-auto grid h-[calc(100vh-5.5rem)] max-w-none md:grid-cols-[240px_minmax(0,1fr)]">
         <aside className="hidden h-full overflow-y-auto border-r bg-background p-4 md:block">

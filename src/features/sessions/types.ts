@@ -75,3 +75,17 @@ export type PublicSession = Pick<ImmersionSession, "id" | "nom" | "code" | "type
 }
 
 export type ListResponse<T> = T[] | { results: T[] }
+
+
+export type ArrivalConsultationSession = {
+  id: number
+  nom: string
+  code: string
+  type_session: SessionType
+  type_session_libelle: string
+  public_cible: PublicCible
+  public_cible_libelle: string
+  annee: number
+  date_debut: string
+  date_fin: string
+}

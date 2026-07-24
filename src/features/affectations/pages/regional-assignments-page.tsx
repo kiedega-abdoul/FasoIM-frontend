@@ -75,6 +75,7 @@ export function RegionalAssignmentsPage() {
   const [cancelTarget, setCancelTarget] = useState<RegionalAssignment | null>(null)
   const [cancelReason, setCancelReason] = useState("")
   const [taskId, setTaskId] = useState("")
+  const [activeTaskKind, setActiveTaskKind] = useState<"generation" | "validation" | "rejection" | "">("")
   const [progress, setProgress] = useState<AssignmentProgress | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -146,17 +147,19 @@ export function RegionalAssignmentsPage() {
         const progressUnavailable = !data.operation && normalizedStatus === "EN_ATTENTE"
         if (progressUnavailable) unavailableProgressCount.current += 1
         else unavailableProgressCount.current = 0
-        if (["TERMINEE", "ECHEC", "ANNULEE", "REFUSEE"].includes(normalizedStatus)) {
+        if (["TERMINE", "TERMINEE", "ECHEC", "ANNULEE", "REFUSEE"].includes(normalizedStatus)) {
           window.clearInterval(timer)
           setTaskId("")
+          setActiveTaskKind("")
           setProgress(null)
-          setInfo(data.message || (normalizedStatus === "TERMINEE" ? "Traitement terminé avec succès." : "Le traitement est terminé."))
+          setInfo(data.message || (["TERMINE", "TERMINEE"].includes(normalizedStatus) ? "Traitement terminé avec succès." : "Le traitement est terminé."))
           await load()
           return
         }
         if (unavailableProgressCount.current >= 5) {
           window.clearInterval(timer)
           setTaskId("")
+          setActiveTaskKind("")
           setInfo("Le suivi du traitement n’est pas encore disponible. Actualisez la liste dans quelques instants.")
         }
       } catch {
@@ -192,17 +195,21 @@ export function RegionalAssignmentsPage() {
     setSelected(checked ? proposedIds : [])
   }
 
-  async function runTask(action: () => Promise<{ task_id: string; message: string }>) {
+  async function runTask(
+    action: () => Promise<{ task_id: string; message: string }>,
+    kind: "generation" | "validation" | "rejection",
+  ) {
     setBusy(true)
     setError("")
     setInfo("")
     try {
       const task = await action()
       unavailableProgressCount.current = 0
+      setActiveTaskKind(kind)
       setTaskId(task.task_id)
       setProgress(null)
-      setInfo("Votre demande est encore en cours de traitement.")
     } catch (exception) {
+      setActiveTaskKind("")
       setError(getApiErrorMessage(exception))
     } finally {
       setBusy(false)
@@ -248,7 +255,7 @@ export function RegionalAssignmentsPage() {
     if (!reason || selectedProposed.length === 0) return
     setRejectOpen(false)
     setRejectReason("")
-    await runTask(() => affectationsApi.rejectRegionalBatch({ affectation_ids: selectedProposed, motif: reason }))
+    await runTask(() => affectationsApi.rejectRegionalBatch({ affectation_ids: selectedProposed, motif: reason }), "rejection")
   }
 
   return <>
@@ -276,10 +283,10 @@ export function RegionalAssignmentsPage() {
       <Card className="mb-6 overflow-hidden border-primary/20">
         <CardContent className="p-0">
           <div className="border-b bg-primary/[0.04] p-6">
-            <div className="flex items-start gap-4"><span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground"><Sparkles className="size-6" /></span><div><p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary">Étape 1</p><h2 className="mt-1 text-xl font-bold">Générer des propositions régionales</h2><p className="mt-1 text-sm text-muted-foreground">Choisissez le nombre d’immergés à traiter. Le système ne dépassera jamais les candidats disponibles ni les places encore ouvertes.</p></div></div>
+            <div className="flex items-start gap-4"><span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground"><Sparkles className="size-6" /></span><div><p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary">Étape 1</p><h2 className="mt-1 text-xl font-bold">Générer des propositions régionales</h2><p className="mt-1 text-sm text-muted-foreground">Choisissez le nombre d’immergés à traiter. Le nombre retenu ne dépassera ni les candidats disponibles ni les places encore ouvertes.</p></div></div>
           </div>
           <div className="space-y-5 p-6">
-            {hasPendingProposals && <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900"><p className="font-semibold">Une nouvelle proposition est bloquée.</p><p className="mt-1 text-sm">{capacityReport?.propositions_en_attente_total.toLocaleString("fr-FR")} proposition(s) sont encore en attente. Validez-les ou rejetez-les avant de lancer un nouveau lot.</p></div>}
+            {hasPendingProposals && <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900"><p className="font-semibold">De nouvelles propositions ne peuvent pas encore être créées.</p><p className="mt-1 text-sm">{capacityReport?.propositions_en_attente_total.toLocaleString("fr-FR")} proposition(s) sont encore en attente. Validez-les ou rejetez-les avant de continuer.</p></div>}
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-xl border p-4"><div className="flex items-center gap-2 text-muted-foreground"><Users className="size-4" /><span className="text-sm">Immergés disponibles</span></div><p className="mt-2 text-2xl font-bold">{capacityReport?.candidats_disponibles ?? 0}</p></div>
               <div className="rounded-xl border p-4"><div className="flex items-center gap-2 text-muted-foreground"><Gauge className="size-4" /><span className="text-sm">Places encore proposables</span></div><p className="mt-2 text-2xl font-bold">{capacityReport?.disponible_total ?? 0}</p></div>
@@ -295,14 +302,14 @@ export function RegionalAssignmentsPage() {
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <Input id="batch-size" className="h-12 text-base" type="number" min={1} disabled={hasPendingProposals} value={batchSize} onChange={(event) => setBatchSize(Number(event.target.value))} />
-                  <Button disabled={busy || hasPendingProposals || !sessionId || effectiveBatchSize <= 0} className="h-12 shrink-0 rounded-xl px-6" onClick={() => void runTask(() => affectationsApi.proposeRegionalBatch({ session_id: sessionId, nombre: effectiveBatchSize, forcer_reliquat: forceAvailablePlaces }))}><Play className="size-4" />Générer {effectiveBatchSize.toLocaleString("fr-FR")} proposition(s)</Button>
+                  <Button disabled={busy || hasPendingProposals || !sessionId || effectiveBatchSize <= 0} className="h-12 shrink-0 rounded-xl px-6" onClick={() => void runTask(() => affectationsApi.proposeRegionalBatch({ session_id: sessionId, nombre: effectiveBatchSize, forcer_reliquat: forceAvailablePlaces }), "generation")}><Play className="size-4" />Générer {effectiveBatchSize.toLocaleString("fr-FR")} proposition(s)</Button>
                 </div>
                 {requestedBatchSize > maxProposable && maxProposable > 0 && <p className="text-sm text-amber-700">Vous avez demandé {requestedBatchSize.toLocaleString("fr-FR")}, mais seulement {maxProposable.toLocaleString("fr-FR")} proposition(s) peuvent être créées actuellement.</p>}
               </div>
 
               <div className="space-y-3">
                 <Label>Mode de répartition</Label>
-                <button type="button" disabled={hasPendingProposals} onClick={() => setForceAvailablePlaces(false)} className={`w-full rounded-xl border p-4 text-left transition ${!forceAvailablePlaces ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "hover:bg-muted/30"}`}><p className="font-semibold">Respecter la région d’origine</p><p className="mt-1 text-sm text-muted-foreground">Le système propose une région seulement si la correspondance géographique est suffisante.</p></button>
+                <button type="button" disabled={hasPendingProposals} onClick={() => setForceAvailablePlaces(false)} className={`w-full rounded-xl border p-4 text-left transition ${!forceAvailablePlaces ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "hover:bg-muted/30"}`}><p className="font-semibold">Respecter la région d’origine</p><p className="mt-1 text-sm text-muted-foreground">Une région est proposée uniquement lorsqu’elle correspond suffisamment à l’origine de l’immergé.</p></button>
                 <button type="button" disabled={hasPendingProposals} onClick={() => setForceAvailablePlaces(true)} className={`w-full rounded-xl border p-4 text-left transition ${forceAvailablePlaces ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "hover:bg-muted/30"}`}><p className="font-semibold">Répartir selon les places disponibles</p><p className="mt-1 text-sm text-muted-foreground">Les immergés restants peuvent être proposés dans une autre région disposant encore de places.</p></button>
               </div>
             </div>
@@ -313,7 +320,7 @@ export function RegionalAssignmentsPage() {
 
     {error && <div className="mb-5"><ErrorBox message={error} /></div>}
     {info && <div className="mb-5 rounded-2xl border border-primary/30 bg-primary/5 px-5 py-4 text-base font-medium leading-7 text-primary">{info}</div>}
-    {progress && <Card className="mb-6"><CardContent className="p-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold">Traitement des propositions</p><p className="text-sm text-muted-foreground">{progress.message || progress.statut}</p></div><p className="text-2xl font-bold text-primary">{progress.progression}%</p></div><div className="mt-4 h-3 overflow-hidden rounded-full bg-primary/10"><div className="h-full bg-primary" style={{ width: `${progress.progression}%` }} /></div>{progress.resultat && <div className="mt-4 grid gap-3 text-sm sm:grid-cols-4"><p><b>{progress.resultat.candidats_pris}</b><br />candidat(s) pris</p><p><b>{progress.resultat.propositions_creees}</b><br />proposition(s)</p><p><b>{progress.resultat.sans_source.length}</b><br />sans source</p><p><b>{progress.resultat.sans_destination.length}</b><br />sans correspondance régionale</p></div>}</CardContent></Card>}
+    {progress && activeTaskKind !== "validation" && <Card className="mb-6"><CardContent className="p-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold">Traitement des propositions</p><p className="text-sm text-muted-foreground">{progress.message || progress.statut}</p></div><p className="text-2xl font-bold text-primary">{progress.progression}%</p></div><div className="mt-4 h-3 overflow-hidden rounded-full bg-primary/10"><div className="h-full bg-primary" style={{ width: `${progress.progression}%` }} /></div>{progress.resultat && <div className="mt-4 grid gap-3 text-sm sm:grid-cols-4"><p><b>{progress.resultat.candidats_pris}</b><br />candidat(s) pris</p><p><b>{progress.resultat.propositions_creees}</b><br />proposition(s)</p><p><b>{progress.resultat.sans_source.length}</b><br />sans source</p><p><b>{progress.resultat.sans_destination.length}</b><br />sans correspondance régionale</p></div>}</CardContent></Card>}
 
     <Card className="mb-6 overflow-hidden">
       <CardContent className="p-0">
@@ -332,11 +339,36 @@ export function RegionalAssignmentsPage() {
       </CardContent>
     </Card>
 
-    <div className="mb-4 flex flex-wrap gap-2">
-      <PermissionGuard permission={P.VALIDATE_REGIONAL_ASSIGNMENT}><Button disabled={busy || selectedProposed.length === 0} onClick={() => void runTask(() => affectationsApi.validateRegionalBatch({ affectation_ids: selectedProposed }))}><CheckCircle2 className="size-4" />Valider la sélection ({selectedProposed.length})</Button></PermissionGuard>
-      <PermissionGuard permission={P.VALIDATE_REGIONAL_ASSIGNMENT}><Button variant="secondary" disabled={busy || proposedIds.length === 0} onClick={() => void runTask(() => affectationsApi.validateRegionalBatch({ affectation_ids: proposedIds }))}>Valider les propositions affichées ({proposedIds.length})</Button></PermissionGuard>
-      <PermissionGuard permission={P.CANCEL_REGIONAL_ASSIGNMENT}><Button variant="destructive" disabled={busy || selectedProposed.length === 0} onClick={() => setRejectOpen(true)}><XCircle className="size-4" />Rejeter la sélection</Button></PermissionGuard>
-    </div>
+    {activeTaskKind === "validation" && taskId ? (
+      <Card className="mb-4 border-primary/30 bg-primary/[0.03]">
+        <CardContent className="p-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-semibold text-primary">Validation des affectations en cours</p>
+              <p className="text-sm text-muted-foreground">{progress?.message || "La demande a été transmise. Le traitement démarre en arrière-plan."}</p>
+            </div>
+            <p className="text-xl font-bold text-primary">{progress ? `${progress.progression}%` : "Démarrage…"}</p>
+          </div>
+          <div className="mt-4 h-3 overflow-hidden rounded-full bg-primary/10">
+            {progress ? (
+              <div
+                className="h-full bg-primary transition-all duration-500"
+                style={{ width: `${progress.progression}%` }}
+              />
+            ) : (
+              <div className="h-full w-1/3 animate-pulse rounded-full bg-primary" />
+            )}
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">Les boutons de validation sont temporairement masqués pour éviter un second lancement du même traitement.</p>
+        </CardContent>
+      </Card>
+    ) : (
+      <div className="mb-4 flex flex-wrap gap-2">
+        <PermissionGuard permission={P.VALIDATE_REGIONAL_ASSIGNMENT}><Button disabled={busy || selectedProposed.length === 0} onClick={() => void runTask(() => affectationsApi.validateRegionalBatch({ affectation_ids: selectedProposed }), "validation")}><CheckCircle2 className="size-4" />Valider la sélection ({selectedProposed.length})</Button></PermissionGuard>
+        <PermissionGuard permission={P.VALIDATE_REGIONAL_ASSIGNMENT}><Button variant="secondary" disabled={busy || proposedIds.length === 0} onClick={() => void runTask(() => affectationsApi.validateRegionalBatch({ affectation_ids: proposedIds }), "validation")}>Valider les propositions affichées ({proposedIds.length})</Button></PermissionGuard>
+        <PermissionGuard permission={P.CANCEL_REGIONAL_ASSIGNMENT}><Button variant="destructive" disabled={busy || selectedProposed.length === 0} onClick={() => setRejectOpen(true)}><XCircle className="size-4" />Rejeter la sélection</Button></PermissionGuard>
+      </div>
+    )}
 
     {loading ? <Loading /> : filtered.length === 0 ? <EmptyState message="Aucune affectation régionale trouvée pour ces critères." /> : <Card className="overflow-hidden"><Table><TableHeader><TableRow><TableHead className="w-12 px-5"><input type="checkbox" className="size-4 accent-primary" checked={proposedIds.length > 0 && selectedProposed.length === proposedIds.length} onChange={(event) => toggleAll(event.target.checked)} /></TableHead><TableHead className="h-14">Immergé</TableHead><TableHead>Région proposée</TableHead><TableHead>Région d’origine</TableHead><TableHead>Statut</TableHead><TableHead>Justification</TableHead><TableHead /></TableRow></TableHeader><TableBody>{filtered.map((row) => <TableRow key={row.id} className="h-20"><TableCell className="px-5"><input type="checkbox" className="size-4 accent-primary" disabled={row.statut !== "PROPOSEE"} checked={selected.includes(row.id)} onChange={(event) => toggle(row.id, event.target.checked)} /></TableCell><TableCell><p className="font-semibold">{displayImmerge(row)}</p><p className="mt-1 text-sm text-muted-foreground">{displayType(row)}</p></TableCell><TableCell><p className="font-semibold">{row.region?.nom}</p></TableCell><TableCell><p>{row.profil_source?.region_reference || "Non précisée"}</p><p className="text-sm text-muted-foreground">{row.profil_source?.province_reference || "Province non précisée"}</p></TableCell><TableCell><StatusBadge value={row.statut.toLowerCase()} /></TableCell><TableCell className="max-w-sm"><p className="line-clamp-2 text-sm text-muted-foreground">{row.motif || "—"}</p></TableCell><TableCell className="text-right">{row.est_ouverte && <PermissionGuard permission={P.CANCEL_REGIONAL_ASSIGNMENT}><Button variant="outline" disabled={busy} onClick={() => { setCancelTarget(row); setCancelReason("") }}>Annuler</Button></PermissionGuard>}</TableCell></TableRow>)}</TableBody></Table></Card>}
 

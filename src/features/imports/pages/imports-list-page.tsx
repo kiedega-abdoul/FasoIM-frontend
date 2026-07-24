@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { AlertTriangle, CheckCircle2, FileSpreadsheet, Search } from "lucide-react"
@@ -95,7 +94,14 @@ export function ImportsListPage() {
     }
   }
 
-  useEffect(() => { void load() }, [])
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void load()
+    }, 0)
+
+    return () => window.clearTimeout(timer)
+    // Chargement initial uniquement.
+  }, [])
 
   const allowedSources = useMemo(() => {
     const compatible = compatibleImportSources(session?.public_cible)

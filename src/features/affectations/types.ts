@@ -1,5 +1,20 @@
 export type ListResponse<T> = T[] | { results: T[] }
 
+export type PaginatedResponse<T> = {
+  count: number
+  next: string | null
+  previous: string | null
+  results: T[]
+}
+
+export type CenterAssignmentStats = {
+  total: number
+  hommes: number
+  femmes: number
+  a_organiser: number
+  centre_nom: string
+}
+
 export type Region = {
   id: number
   code: string

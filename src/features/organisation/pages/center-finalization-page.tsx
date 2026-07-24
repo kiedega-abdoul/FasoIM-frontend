@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   ArrowRight,
   BedDouble,
@@ -20,9 +20,10 @@ import { getApiErrorMessage } from "@/api/api-error"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { currentScopeParams } from "@/features/affectations/scope"
 import { documentsApi } from "@/features/documents/api"
-import type { FinalResult, GeneratedDocument, OfficialPublication, TaskProgress } from "@/features/documents/types"
+import type { FinalResult, FinalResultStatistics, GeneratedDocument, OfficialPublication, TaskProgress } from "@/features/documents/types"
 import { EmptyState, ErrorBox, Loading, PageHeader } from "@/features/accounts/components"
 import { useAuthStore } from "@/stores/auth-store"
 import { organisationApi } from "../api"
@@ -53,11 +54,27 @@ export function CenterFinalizationPage() {
   const [working, setWorking] = useState(false)
   const [error, setError] = useState("")
   const [info, setInfo] = useState("")
-  const [results, setResults] = useState<FinalResult[]>([])
-  const [documents, setDocuments] = useState<GeneratedDocument[]>([])
+  const [, setResults] = useState<FinalResult[]>([])
+  const [resultStatistics, setResultStatistics] = useState<FinalResultStatistics>({ total: 0, eligibles: 0, non_eligibles: 0, a_verifier: 0, publies: 0 })
+  const [unvalidatedResults, setUnvalidatedResults] = useState(0)
+  const [, setDocuments] = useState<GeneratedDocument[]>([])
+  const [generatedCertificates, setGeneratedCertificates] = useState(0)
   const [publications, setPublications] = useState<OfficialPublication[]>([])
   const [completionWorking, setCompletionWorking] = useState(false)
   const [taskProgress, setTaskProgress] = useState<TaskProgress | null>(null)
+  const [confirmation, setConfirmation] = useState<{ title: string; description: string } | null>(null)
+  const confirmationResolver = useRef<((value: boolean) => void) | null>(null)
+
+  function requestConfirmation(title: string, description: string) {
+    setConfirmation({ title, description })
+    return new Promise<boolean>((resolve) => { confirmationResolver.current = resolve })
+  }
+
+  function closeConfirmation(value: boolean) {
+    confirmationResolver.current?.(value)
+    confirmationResolver.current = null
+    setConfirmation(null)
+  }
 
   const canValidate = permissions.includes(P.VALIDATE_CENTER_ORGANIZATION)
   const canMarkReady = permissions.includes(P.MARK_CENTER_READY)
@@ -80,17 +97,35 @@ export function CenterFinalizationPage() {
       setRule(currentRule)
       setSummary(currentRule ? await organisationApi.centerRuleSummary(currentRule.id) : null)
       if (normalizedStatus(currentRule?.statut) === "PRETE_PUBLICATION") {
-        const [currentResults, currentDocuments, currentPublications] = await Promise.all([
-          documentsApi.finalResults({ session_id: sessionId, centre_id: centerId }),
-          documentsApi.generatedDocuments({ session_id: sessionId, centre_id: centerId, type_document: "ATTESTATION" }),
+        const [
+          currentResultsPage,
+          currentStatistics,
+          calculatedResultsPage,
+          generatedPage,
+          signedPage,
+          publishedPage,
+          currentPublications,
+        ] = await Promise.all([
+          documentsApi.finalResultsPage({ session: sessionId, centre: centerId, page_size: 50 }),
+          documentsApi.finalResultStatistics({ session: sessionId, centre: centerId }),
+          documentsApi.finalResultsPage({ session: sessionId, centre: centerId, statut: "CALCULE", page_size: 1 }),
+          documentsApi.generatedDocumentsPage({ session: sessionId, centre: centerId, type_document: "ATTESTATION", statut: "GENERE", page_size: 1 }),
+          documentsApi.generatedDocumentsPage({ session: sessionId, centre: centerId, type_document: "ATTESTATION", statut: "SIGNE", page_size: 1 }),
+          documentsApi.generatedDocumentsPage({ session: sessionId, centre: centerId, type_document: "ATTESTATION", statut: "PUBLIE", page_size: 1 }),
           documentsApi.publications({ session_id: sessionId, centre_id: centerId, type_publication: "ATTESTATIONS" }),
         ])
-        setResults(currentResults)
-        setDocuments(currentDocuments)
+        setResults(currentResultsPage.results)
+        setResultStatistics(currentStatistics)
+        setUnvalidatedResults(calculatedResultsPage.count)
+        setDocuments(generatedPage.results)
+        setGeneratedCertificates(generatedPage.count + signedPage.count + publishedPage.count)
         setPublications(currentPublications)
       } else {
         setResults([])
+        setResultStatistics({ total: 0, eligibles: 0, non_eligibles: 0, a_verifier: 0, publies: 0 })
+        setUnvalidatedResults(0)
         setDocuments([])
+        setGeneratedCertificates(0)
         setPublications([])
       }
     } catch (exception) {
@@ -104,7 +139,7 @@ export function CenterFinalizationPage() {
 
   async function validateOrganization() {
     if (!rule || !summary?.actions.peut_valider_organisation || !canValidate) return
-    if (!window.confirm("Confirmer la validation de l’organisation interne du centre ?")) return
+    if (!await requestConfirmation("Valider l’organisation interne ?", "Les règles, sections, groupes, lits et affectations ont été vérifiés. Cette action validera officiellement l’organisation interne du centre.")) return
 
     setWorking(true)
     setError("")
@@ -122,7 +157,7 @@ export function CenterFinalizationPage() {
 
   async function markReady() {
     if (!rule || !summary?.actions.peut_marquer_pret || !canMarkReady) return
-    if (!window.confirm("Confirmer que le centre est entièrement prêt à accueillir les immergés ?")) return
+    if (!await requestConfirmation("Déclarer le centre prêt ?", "Le centre sera déclaré prêt à accueillir les immergés et les informations d’accueil pourront être publiées.")) return
 
     setWorking(true)
     setError("")
@@ -130,7 +165,7 @@ export function CenterFinalizationPage() {
     try {
       await organisationApi.markCenterReady(rule.id)
       await load(false)
-      setInfo("Le centre est officiellement prêt à accueillir les immergés.")
+      setInfo("Le centre est prêt et les informations d’arrivée sont publiées pour ses immergés.")
     } catch (exception) {
       setError(getApiErrorMessage(exception))
     } finally {
@@ -140,19 +175,46 @@ export function CenterFinalizationPage() {
 
 
   async function waitForTask(taskId: string) {
-    for (let attempt = 0; attempt < 180; attempt += 1) {
+    // Un centre de plusieurs milliers d’immergés peut nécessiter
+    // plusieurs minutes. Le suivi reste actif pendant 15 minutes.
+    for (let attempt = 0; attempt < 900; attempt += 1) {
       const progress = await documentsApi.taskProgress(taskId)
       setTaskProgress(progress)
-      if (progress.statut === "TERMINE") return
-      if (progress.statut === "ECHEC") throw new Error(progress.erreur || "Le traitement n’a pas pu être terminé.")
-      await new Promise((resolve) => window.setTimeout(resolve, 1000))
+
+      const statut = String(progress.statut || "").toUpperCase()
+
+      if (
+        ["TERMINE", "TERMINEE", "SUCCESS", "SUCCEEDED"].includes(
+          statut,
+        )
+      ) {
+        return progress
+      }
+
+      if (
+        ["ECHEC", "ECHOUEE", "FAILED", "REFUSEE"].includes(
+          statut,
+        )
+      ) {
+        throw new Error(
+          progress.erreur ||
+            "Le traitement n’a pas pu être terminé.",
+        )
+      }
+
+      await new Promise((resolve) =>
+        window.setTimeout(resolve, 1000),
+      )
     }
-    throw new Error("Le traitement prend plus de temps que prévu. Revenez dans quelques instants pour consulter son avancement.")
+
+    throw new Error(
+      "Le calcul continue en arrière-plan. Actualisez les données dans quelques instants.",
+    )
   }
 
   async function calculateResults() {
     if (!canCalculateResults || !sessionId || !centerId) return
-    if (!window.confirm("Vérifier toutes les opérations du centre et calculer les résultats finaux ?")) return
+    if (!await requestConfirmation("Calculer les résultats finaux ?", "Toutes les opérations du centre seront vérifiées avant le calcul des résultats finaux.")) return
     setCompletionWorking(true)
     setTaskProgress({ statut: "EN_ATTENTE", progression: 0 })
     setError("")
@@ -171,7 +233,7 @@ export function CenterFinalizationPage() {
 
   async function validateResults() {
     if (!canValidateResults || !sessionId || !centerId) return
-    if (!window.confirm("Confirmer les résultats finaux de tous les immergés du centre ?")) return
+    if (!await requestConfirmation("Valider les résultats finaux ?", "Les résultats finaux de tous les immergés du centre seront confirmés.")) return
     setCompletionWorking(true)
     setError("")
     setInfo("")
@@ -206,7 +268,7 @@ export function CenterFinalizationPage() {
 
   async function submitCertificates() {
     if (!canSubmitCertificates || !sessionId || !centerId) return
-    if (!window.confirm("Finaliser l’immersion du centre et transmettre les attestations à la Direction régionale ?")) return
+    if (!await requestConfirmation("Finaliser et transmettre le dossier ?", "L’immersion du centre sera finalisée et les attestations seront transmises à la Direction régionale.")) return
     setCompletionWorking(true)
     setError("")
     setInfo("")
@@ -232,12 +294,12 @@ export function CenterFinalizationPage() {
   const total = summary?.total_affectations_centre ?? 0
   const grouped = summary?.affectations_groupes_actives ?? 0
   const housed = summary?.attributions_lits_actives ?? 0
-  const eligibleResults = results.filter((result) => result.decision === "ELIGIBLE")
-  const resultsCalculated = total > 0 && results.length === total
-  const resultsToReview = results.filter((result) => result.decision === "A_VERIFIER").length
-  const resultsValidated = resultsCalculated && results.every((result) => ["VALIDE_CENTRE", "SOUMIS_REGION", "VALIDE_REGION", "PUBLIE"].includes(result.statut))
-  const generatedCertificates = documents.filter((document) => ["GENERE", "SIGNE", "PUBLIE"].includes(document.statut)).length
-  const certificatesReady = resultsValidated && generatedCertificates === eligibleResults.length
+  const resultsCalculatedCount = resultStatistics.total
+  const eligibleResultsCount = resultStatistics.eligibles
+  const resultsCalculated = total > 0 && resultsCalculatedCount === total
+  const resultsToReview = resultStatistics.a_verifier
+  const resultsValidated = resultsCalculated && unvalidatedResults === 0
+  const certificatesReady = resultsValidated && generatedCertificates === eligibleResultsCount
   const certificatePublication = publications.find((publication) => publication.type_publication === "ATTESTATIONS" && !["ANNULEE", "REMPLACEE"].includes(publication.statut))
   const completionSubmitted = Boolean(certificatePublication && ["SOUMISE_REGION", "VALIDEE_REGION", "PRETE_DGAS", "PUBLIEE"].includes(certificatePublication.statut))
   const releasedBeds = certificatePublication?.resume?.hebergement?.lits_liberes ?? 0
@@ -320,10 +382,10 @@ export function CenterFinalizationPage() {
 
     {rule && summary && isReady && <section className="overflow-hidden rounded-3xl border border-primary/20 bg-primary px-6 py-14 text-center text-primary-foreground shadow-xl sm:px-10 sm:py-20">
       <div className="mx-auto flex size-20 items-center justify-center rounded-full bg-primary-foreground/15"><ShieldCheck className="size-11" /></div>
-      <p className="mt-7 text-sm font-bold uppercase tracking-[0.35em] text-primary-foreground/80">Centre prêt à accueillir</p>
-      <h1 className="mt-4 text-5xl font-black uppercase leading-none tracking-tight sm:text-7xl lg:text-8xl">Vous êtes en immersion</h1>
+      <p className="mt-7 text-sm font-bold uppercase tracking-[0.35em] text-primary-foreground/80">Informations d’arrivée publiées</p>
+      <h1 className="mt-4 text-4xl font-black uppercase leading-none tracking-tight sm:text-6xl lg:text-7xl">Centre prêt à accueillir les immergés</h1>
       <p className="mx-auto mt-6 max-w-3xl text-lg leading-7 text-primary-foreground/85">
-        La préparation de {centerName} est finalisée pour {sessionName}. Les informations d’organisation peuvent maintenant être communiquées aux immergés.
+        La préparation de {centerName} est finalisée pour {sessionName}. Les informations d’arrivée et d’organisation sont maintenant publiées et consultables par les immergés affectés à ce centre.
       </p>
     </section>}
 
@@ -443,10 +505,10 @@ export function CenterFinalizationPage() {
         </div> : <div className="space-y-5 p-6">
           <div className="grid gap-3 lg:grid-cols-4">
             {[
-              { label: "Résultats calculés", value: `${results.length}/${total}`, complete: resultsCalculated },
+              { label: "Résultats calculés", value: `${resultsCalculatedCount}/${total}`, complete: resultsCalculated },
               { label: "Résultats à vérifier", value: resultsToReview, complete: resultsCalculated && resultsToReview === 0 },
               { label: "Résultats validés", value: resultsValidated ? "Oui" : "Non", complete: resultsValidated },
-              { label: "Attestations préparées", value: `${generatedCertificates}/${eligibleResults.length}`, complete: certificatesReady },
+              { label: "Attestations préparées", value: `${generatedCertificates}/${eligibleResultsCount}`, complete: certificatesReady },
             ].map((item) => <div key={item.label} className="rounded-2xl border p-4">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm text-muted-foreground">{item.label}</p>
@@ -510,5 +572,17 @@ export function CenterFinalizationPage() {
         </div>}
       </CardContent>
     </Card>}
-  </div>
+    <Dialog open={Boolean(confirmation)} onOpenChange={(open) => { if (!open) closeConfirmation(false) }}>
+    <DialogContent showCloseButton={false} className="sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle>{confirmation?.title}</DialogTitle>
+        <DialogDescription>{confirmation?.description}</DialogDescription>
+      </DialogHeader>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={() => closeConfirmation(false)}>Annuler</Button>
+        <Button type="button" onClick={() => closeConfirmation(true)}>Confirmer</Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+</div>
 }

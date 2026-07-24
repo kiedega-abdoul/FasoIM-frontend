@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import {
   ArrowRight,
+  BedDouble,
   Building2,
   CalendarRange,
   ClipboardCheck,
@@ -42,7 +43,7 @@ const modules = [
   },
   {
     label: "Organisation du centre",
-    description: "Configurer les règles, capacités, seuils et consignes qui structurent le fonctionnement du centre.",
+    description: "Définir les règles, capacités, seuils et consignes de fonctionnement du centre.",
     href: "/app/organisation-centre",
     permissions: ORGANISATION_GROUPS.CENTER_ORGANIZATION,
     icon: ListChecks,
@@ -50,10 +51,18 @@ const modules = [
   },
   {
     label: "Répartition interne",
-    description: "Répartir les immergés dans les sections, groupes, dortoirs et lits du centre.",
+    description: "Répartir les immergés dans les sections et les groupes du centre.",
     href: "/app/repartition-interne",
     permissions: ORGANISATION_GROUPS.INTERNAL_DISTRIBUTION,
     icon: Layers3,
+    disponible: true,
+  },
+  {
+    label: "Hébergement",
+    description: "Créer les dortoirs, générer leurs lits et consulter les places disponibles.",
+    href: "/app/dortoirs",
+    permissions: ORGANISATION_GROUPS.HOSTING,
+    icon: BedDouble,
     disponible: true,
   },
   {

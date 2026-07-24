@@ -63,8 +63,9 @@ export function CenterAssignmentsPage() {
     return regions.find((item) => item.code === regionCode) ?? null
   }
 
-  async function load() {
-    setLoading(true)
+  async function load(options: { silent?: boolean } = {}) {
+    const { silent = false } = options
+    if (!silent) setLoading(true)
     setError("")
     try {
       const currentRegion = region ?? await resolveRegion()
@@ -90,7 +91,7 @@ export function CenterAssignmentsPage() {
     } catch (exception) {
       setError(getApiErrorMessage(exception))
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 
@@ -105,12 +106,12 @@ export function CenterAssignmentsPage() {
         const normalized = String(data.statut).toUpperCase()
         if (!data.operation && normalized === "EN_ATTENTE") unavailableProgressCount.current += 1
         else unavailableProgressCount.current = 0
-        if (["TERMINEE", "ECHEC", "ANNULEE", "REFUSEE"].includes(normalized)) {
+        if (["TERMINE", "TERMINEE", "ECHEC", "ANNULEE", "REFUSEE"].includes(normalized)) {
           window.clearInterval(timer)
           setTaskId("")
           setProgress(null)
           setInfo(data.message || "Le traitement est terminé.")
-          await load()
+          await load({ silent: true })
         } else if (unavailableProgressCount.current >= 5) {
           window.clearInterval(timer)
           setTaskId("")
@@ -178,7 +179,7 @@ export function CenterAssignmentsPage() {
       await affectationsApi.createCenterAssignment({ code_fasoim: manualCode.trim().toUpperCase(), centre_id: Number(manualCentreId), motif: manualReason.trim() })
       setManualCode(""); setManualReason(""); setManualOpen(false)
       setInfo("L’affectation directe au centre a été enregistrée.")
-      await load()
+      await load({ silent: true })
     } catch (exception) { setError(getApiErrorMessage(exception)) }
     finally { setBusy(false) }
   }
@@ -190,7 +191,7 @@ export function CenterAssignmentsPage() {
       await affectationsApi.cancelCenterAssignment(cancelTarget.id, cancelReason.trim())
       setCancelTarget(null); setCancelReason("")
       setInfo("L’affectation au centre a été annulée.")
-      await load()
+      await load({ silent: true })
     } catch (exception) { setError(getApiErrorMessage(exception)) }
     finally { setBusy(false) }
   }
@@ -222,8 +223,8 @@ export function CenterAssignmentsPage() {
 
       <PermissionGuard permission={P.PROPOSE_CENTER_ASSIGNMENT}>
         <section className="rounded-2xl border bg-card p-6">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Étape 1</p><h2 className="mt-1 text-2xl font-bold">Générer les propositions vers les centres</h2><p className="mt-1 text-muted-foreground">Le système contrôle la capacité, le sexe, le public, le niveau et la série avant de proposer un centre.</p>
-          {hasPending ? <div className="mt-5 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-base font-medium text-amber-950">{report.propositions_en_attente_total} proposition(s) sont encore en attente. Validez-les ou rejetez-les avant de lancer un nouveau lot.</div> : <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end"><div><Label>Nombre d’immergés à proposer</Label><div className="mt-2 flex flex-wrap gap-2">{quickSizes.map((size) => <Button key={size} type="button" variant={batchSize === size ? "default" : "outline"} onClick={() => setBatchSize(size)}>{size}</Button>)}{maxProposable > 0 && <Button type="button" variant={batchSize === maxProposable ? "default" : "outline"} onClick={() => setBatchSize(maxProposable)}>Tout le disponible ({maxProposable})</Button>}</div><Input className="mt-3 h-12 text-base" type="number" min={1} value={batchSize} onChange={(event) => setBatchSize(Number(event.target.value))} /></div><Button className="h-12 px-6" disabled={busy || effective <= 0 || !region} onClick={() => region && runTask(() => affectationsApi.proposeCenterBatch({ session_id: sessionId, region_id: region.id, nombre: effective }))}><Play className="mr-2 size-4" />Générer {effective} proposition(s)</Button></div>}
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Étape 1</p><h2 className="mt-1 text-2xl font-bold">Générer les propositions vers les centres</h2><p className="mt-1 text-muted-foreground">La capacité, le sexe et le public sont contrôlés avant qu’un centre soit proposé.</p>
+          {hasPending ? <div className="mt-5 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-base font-medium text-amber-950">{report.propositions_en_attente_total} proposition(s) sont encore en attente. Validez-les ou rejetez-les avant de continuer.</div> : <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end"><div><Label>Nombre d’immergés à proposer</Label><div className="mt-2 flex flex-wrap gap-2">{quickSizes.map((size) => <Button key={size} type="button" variant={batchSize === size ? "default" : "outline"} onClick={() => setBatchSize(size)}>{size}</Button>)}{maxProposable > 0 && <Button type="button" variant={batchSize === maxProposable ? "default" : "outline"} onClick={() => setBatchSize(maxProposable)}>Tout le disponible ({maxProposable})</Button>}</div><Input className="mt-3 h-12 text-base" type="number" min={1} value={batchSize} onChange={(event) => setBatchSize(Number(event.target.value))} /></div><Button className="h-12 px-6" disabled={busy || effective <= 0 || !region} onClick={() => region && runTask(() => affectationsApi.proposeCenterBatch({ session_id: sessionId, region_id: region.id, nombre: effective }))}><Play className="mr-2 size-4" />Générer {effective} proposition(s)</Button></div>}
         </section>
       </PermissionGuard>
 

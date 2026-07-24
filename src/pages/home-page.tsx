@@ -31,8 +31,8 @@ const services = [
   },
   {
     icon: FileCheck2,
-    title: "Vérifier une attestation",
-    description: "Contrôlez l’authenticité d’une attestation FasoIM, que vous soyez immergé, administration, établissement ou employeur.",
+    title: "Attestation",
+    description: "Vérifiez l’authenticité d’une attestation FasoIM ou téléchargez votre propre attestation avec votre Code FasoIM.",
   },
 ]
 
@@ -77,12 +77,12 @@ export function HomePage() {
                 Faire une demande volontaire
               </Button>
               <Button
-                render={<Link to="/verification-attestation" />}
+                render={<Link to="/attestation" />}
                 size="lg"
                 variant="outline"
                 className="border-white/40 bg-transparent text-base text-white shadow-lg hover:bg-white/10 hover:text-white"
               >
-                Vérifier une attestation
+                Attestation
               </Button>
             </div>
 
@@ -150,12 +150,12 @@ export function HomePage() {
               Faire une demande volontaire
             </Button>
             <Button
-              render={<Link to="/verification-attestation" />}
+              render={<Link to="/attestation" />}
               size="lg"
               variant="outline"
               className="shrink-0 border-white/40 bg-transparent text-base text-white hover:bg-white/10 hover:text-white"
             >
-              Vérifier une attestation
+              Attestation
             </Button>
           </div>
         </div>

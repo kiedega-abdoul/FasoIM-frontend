@@ -17,7 +17,7 @@ const navigation = [
   { label: "Accueil", href: "/" },
   { label: "Consulter mon immersion", href: "/consultation" },
   { label: "Demande volontaire", href: "/demande-volontaire" },
-  { label: "Vérifier une attestation", href: "/verification-attestation" },
+  { label: "Attestation", href: "/attestation" },
 ]
 
 function DesktopNavigation() {
